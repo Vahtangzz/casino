@@ -18,6 +18,7 @@
         <div class="overlay-msg" id="overlay">
           <h2>☄️ Dodge Storm</h2>
           <p class="muted">Move freely and survive the falling storm. Gets faster the longer you last.</p>
+          <div class="seg" id="diffPick" style="width:220px"></div>
           <button class="btn primary" id="startBtn">Start</button>
         </div>
       </div>
@@ -30,6 +31,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -48,7 +50,11 @@ SGPGame.renderTopbar({ id: 'dodge', title: 'Dodge Storm', icon: '☄️' });
   };
   hudBest.textContent = best();
 
-  let player, rocks, keys, running, raf, startTime, spawnTimer, elapsed;
+  let player, rocks, keys, running, raf, startTime, spawnTimer, elapsed, gameDifficulty = 'normal';
+  const DIFF = { easy: { spawnMul: 0.7, speedMul: 0.75 }, normal: { spawnMul: 1, speedMul: 1 }, hard: { spawnMul: 1.35, speedMul: 1.3 } };
+  gameDifficulty = SGPGame.mountDifficultyPicker(document.getElementById('diffPick'), 'dodge',
+    [{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }],
+    'normal', v => gameDifficulty = v);
 
   function reset() {
     player = { x: W / 2, y: H - 50, r: 10 };
@@ -88,12 +94,13 @@ SGPGame.renderTopbar({ id: 'dodge', title: 'Dodge Storm', icon: '☄️' });
     player.x = Math.max(player.r, Math.min(W - player.r, player.x));
     player.y = Math.max(player.r, Math.min(H - player.r, player.y));
 
-    const difficulty = Math.min(1, elapsed / 40);
+    const rampT = Math.min(1, elapsed / 40);
+    const dm = DIFF[gameDifficulty];
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
-      spawnTimer = 0.55 - difficulty * 0.38;
+      spawnTimer = (0.55 - rampT * 0.38) / dm.spawnMul;
       const r = 8 + Math.random() * 14;
-      rocks.push({ x: Math.random() * W, y: -r, r, vy: 90 + Math.random() * 120 + difficulty * 160 });
+      rocks.push({ x: Math.random() * W, y: -r, r, vy: (90 + Math.random() * 120 + rampT * 160) * dm.speedMul });
     }
     rocks.forEach(r => r.y += r.vy * dt);
     rocks = rocks.filter(r => r.y - r.r < H);

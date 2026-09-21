@@ -30,10 +30,11 @@
     <div class="game-stage">
       <div class="game-hud"><span>💣 Left: <b id="hudMines">10</b></span><span>Time: <b id="hudTime">0</b>s</span><span>Best: <b id="hudBest">0</b></span></div>
       <div class="stage-wrap board-wrap">
-        <div class="ms-grid" id="grid" style="grid-template-columns:repeat(9,minmax(0,1fr))"></div>
+        <div class="ms-grid" id="grid"></div>
         <div class="overlay-msg" id="overlay">
           <h2>💣 Minesweeper</h2>
           <p class="muted">Left click / tap to reveal. Right click / long-press to flag. Clear the board without hitting a mine.</p>
+          <div class="seg" id="diffPick" style="width:280px"></div>
           <button class="btn primary" id="startBtn">Start</button>
         </div>
       </div>
@@ -45,6 +46,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -53,11 +55,21 @@ SGPUI.renderHeader('');
 SGPGame.renderTopbar({ id: 'minesweeper', title: 'Minesweeper', icon: '💣' });
 
 (() => {
-  const SIZE = 9, MINES = 10;
+  let SIZE = 9, MINES = 10;
+  const DIFF = {
+    beginner:     { size: 9,  mines: 10 },
+    intermediate: { size: 12, mines: 24 },
+    expert:       { size: 16, mines: 51 },
+  };
   const gridEl = document.getElementById('grid'), overlay = document.getElementById('overlay');
   const hudMines = document.getElementById('hudMines'), hudTime = document.getElementById('hudTime'), hudBest = document.getElementById('hudBest');
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.minesweeper) || 0;
   hudBest.textContent = best();
+
+  function applyDifficulty(v) { SIZE = DIFF[v].size; MINES = DIFF[v].mines; }
+  applyDifficulty(SGPGame.mountDifficultyPicker(document.getElementById('diffPick'), 'minesweeper',
+    [{ value: 'beginner', label: 'Beginner' }, { value: 'intermediate', label: 'Intermediate' }, { value: 'expert', label: 'Expert' }],
+    'beginner', applyDifficulty));
 
   let cells, running = false, firstClick, flagsLeft, startTime, timerId, revealedCount;
 
@@ -87,6 +99,7 @@ SGPGame.renderTopbar({ id: 'minesweeper', title: 'Minesweeper', icon: '💣' });
   }
 
   function render() {
+    gridEl.style.gridTemplateColumns = `repeat(${SIZE}, minmax(0, 1fr))`;
     gridEl.innerHTML = '';
     for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
       const cell = cells[idx(r, c)];

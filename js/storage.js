@@ -4,10 +4,11 @@
      sgp_accounts_v1 : { [usernameLower]: Account }
      sgp_session_v1  : { username } | null
    Account:
-     { username, salt, hash, createdAt, avatar, coins, xp, level,
+     { username, salt, hash, createdAt, avatar, frame, coins, xp, level,
        gamesPlayed, wins, achievements:[id], favorites:[gameId],
        highScores:{ [gameId]: number }, stats:{ [gameId]: {plays,best,last} },
-       settings:{ sound, music, schoolMode, performanceMode, reduceMotion } }
+       difficulty:{ [gameId]: string },
+       settings:{ sound, music, schoolMode, performanceMode, theme } }
 */
 const SGP = (() => {
   const ACC_KEY = 'sgp_accounts_v1';
@@ -30,13 +31,15 @@ const SGP = (() => {
       username,
       salt: null, hash: null, createdAt: Date.now(),
       avatar: '🙂',
+      frame: 'none',
       coins: 500, xp: 0, level: 1,
       gamesPlayed: 0, wins: 0,
       achievements: [],
       favorites: [],
       highScores: {},
       stats: {},
-      settings: { sound: true, music: true, schoolMode: false, performanceMode: 'medium' }
+      difficulty: {},
+      settings: { sound: true, music: true, schoolMode: false, performanceMode: 'medium', theme: 'default' }
     };
   }
 

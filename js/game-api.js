@@ -190,9 +190,32 @@ const SGPGame = (() => {
     el.appendChild(b);
   }
 
+  function getDifficulty(gameId, fallback) {
+    const d = activeAccount().difficulty;
+    return (d && d[gameId]) || fallback;
+  }
+  function setDifficulty(gameId, value) {
+    mutateActive(a => { a.difficulty = a.difficulty || {}; a.difficulty[gameId] = value; });
+  }
+
+  // Renders a row of difficulty buttons into `el`, calls onChange(value) on pick,
+  // and returns the currently-remembered value (or fallback) so callers can use it immediately.
+  function mountDifficultyPicker(el, gameId, levels, fallback, onChange) {
+    if (!el) return fallback;
+    const current = getDifficulty(gameId, fallback);
+    el.innerHTML = levels.map(l => `<button data-v="${l.value}" class="${l.value === current ? 'active' : ''}">${l.label}</button>`).join('');
+    el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      el.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      setDifficulty(gameId, b.dataset.v);
+      onChange(b.dataset.v);
+    }));
+    return current;
+  }
+
   return {
     activeAccount, mutateActive, isLoggedIn, getSettings, renderTopbar,
     toggleFavorite, adjustCoins, reportResult, mountDirPad, mountActionButton,
-    audioAllowed, particleScale, beep
+    audioAllowed, particleScale, beep, getDifficulty, setDifficulty, mountDifficultyPicker
   };
 })();

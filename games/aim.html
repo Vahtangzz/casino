@@ -18,6 +18,7 @@
         <div class="overlay-msg" id="overlay">
           <h2>🎯 Aim Trainer</h2>
           <p class="muted">Click as many targets as you can in 30 seconds.</p>
+          <div class="seg" id="diffPick" style="width:220px"></div>
           <button class="btn primary" id="startBtn">Start</button>
         </div>
       </div>
@@ -29,6 +30,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -43,10 +45,14 @@ SGPGame.renderTopbar({ id: 'aim', title: 'Aim Trainer', icon: '🎯' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.aim) || 0;
   hudBest.textContent = best();
 
-  let target, hits, misses, timeLeft, running = false, countdownId;
+  let target, hits, misses, timeLeft, running = false, countdownId, difficulty = 'normal';
+  const DIFF = { easy: { r: 30, time: 35 }, normal: { r: 22, time: 30 }, hard: { r: 15, time: 25 } };
+  difficulty = SGPGame.mountDifficultyPicker(document.getElementById('diffPick'), 'aim',
+    [{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }],
+    'normal', v => difficulty = v);
 
   function spawnTarget() {
-    const r = 22;
+    const r = DIFF[difficulty].r;
     target = { x: r + Math.random() * (cv.width - r * 2), y: r + Math.random() * (cv.height - r * 2), r };
   }
 
@@ -95,8 +101,8 @@ SGPGame.renderTopbar({ id: 'aim', title: 'Aim Trainer', icon: '🎯' });
   }
 
   function start() {
-    hits = 0; misses = 0; timeLeft = 30;
-    hudScore.textContent = 0; hudTime.textContent = 30;
+    hits = 0; misses = 0; timeLeft = DIFF[difficulty].time;
+    hudScore.textContent = 0; hudTime.textContent = timeLeft;
     overlay.style.display = 'none';
     running = true;
     spawnTarget(); draw();

@@ -30,6 +30,8 @@
     <div id="gameTopbar"></div>
     <div class="game-stage">
       <div class="game-hud"><span>X wins: <b id="hudX">0</b></span><span>O wins: <b id="hudO">0</b></span><span>Draws: <b id="hudD">0</b></span></div>
+      <div class="seg" id="modePick" style="width:240px"></div>
+      <div class="seg" id="aiDiffPick" style="width:240px;display:none"></div>
       <div class="stage-wrap board-wrap">
         <div class="ttt-grid" id="grid"></div>
         <div class="overlay-msg" id="overlay" style="display:none">
@@ -45,6 +47,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -55,44 +58,90 @@ SGPGame.renderTopbar({ id: 'tictactoe', title: 'Tic-Tac-Toe', icon: '❌' });
 (() => {
   const gridEl = document.getElementById('grid'), overlay = document.getElementById('overlay'), overText = document.getElementById('overText'), hint = document.getElementById('turnHint');
   const hudX = document.getElementById('hudX'), hudO = document.getElementById('hudO'), hudD = document.getElementById('hudD');
+  const aiDiffPick = document.getElementById('aiDiffPick');
   const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   let board, turn, wins = { X: 0, O: 0, D: 0 }, active;
+  let mode = 'pvp', aiLevel = 'medium';
+
+  mode = SGPGame.mountDifficultyPicker(document.getElementById('modePick'), 'tictactoe_mode',
+    [{ value: 'pvp', label: '2 Players' }, { value: 'ai', label: 'vs Computer' }],
+    'pvp', v => { mode = v; aiDiffPick.style.display = v === 'ai' ? 'flex' : 'none'; nextRound(); });
+  aiDiffPick.style.display = mode === 'ai' ? 'flex' : 'none';
+  aiLevel = SGPGame.mountDifficultyPicker(aiDiffPick, 'tictactoe_ai',
+    [{ value: 'easy', label: 'Easy' }, { value: 'medium', label: 'Medium' }, { value: 'hard', label: 'Unbeatable' }],
+    'medium', v => { aiLevel = v; nextRound(); });
 
   function render(winLine, newIndex) {
     gridEl.innerHTML = board.map((v, i) => `<div class="ttt-cell ${v ? v.toLowerCase() : ''} ${winLine && winLine.includes(i) ? 'win' : ''} ${i === newIndex ? 'mark-new' : ''}" data-i="${i}">${v || ''}</div>`).join('');
     gridEl.querySelectorAll('.ttt-cell').forEach(el => el.addEventListener('click', () => play(+el.dataset.i)));
-    hint.textContent = active ? `Player ${turn}'s turn` : '';
+    hint.textContent = !active ? '' : (mode === 'ai' && turn === 'O' ? "Computer's turn..." : `Player ${turn}'s turn`);
   }
 
-  function checkWinner() {
+  function checkWinner(b) {
     for (const line of LINES) {
-      const [a, b, c] = line;
-      if (board[a] && board[a] === board[b] && board[a] === board[c]) return { winner: board[a], line };
+      const [a, x, c] = line;
+      if (b[a] && b[a] === b[x] && b[a] === b[c]) return { winner: b[a], line };
     }
-    if (board.every(v => v)) return { winner: 'draw' };
+    if (b.every(v => v)) return { winner: 'draw' };
     return null;
+  }
+
+  function emptyIndices(b) { return b.map((v, i) => v ? -1 : i).filter(i => i >= 0); }
+
+  function minimax(b, player) {
+    const result = checkWinner(b);
+    if (result) {
+      if (result.winner === 'O') return { score: 10 };
+      if (result.winner === 'X') return { score: -10 };
+      return { score: 0 };
+    }
+    const moves = emptyIndices(b).map(i => {
+      const nb = b.slice(); nb[i] = player;
+      return { index: i, score: minimax(nb, player === 'O' ? 'X' : 'O').score };
+    });
+    return player === 'O'
+      ? moves.reduce((best, m) => m.score > best.score ? m : best)
+      : moves.reduce((best, m) => m.score < best.score ? m : best);
+  }
+
+  function aiPickMove() {
+    const options = emptyIndices(board);
+    if (aiLevel === 'easy') return options[Math.floor(Math.random() * options.length)];
+    if (aiLevel === 'medium' && Math.random() < 0.5) return options[Math.floor(Math.random() * options.length)];
+    return minimax(board, 'O').index;
   }
 
   function play(i) {
     if (!active || board[i]) return;
+    if (mode === 'ai' && turn === 'O') return; // ignore clicks during the computer's turn
+    commitMove(i);
+  }
+
+  function commitMove(i) {
     board[i] = turn;
     SGPGame.beep(turn === 'X' ? 500 : 620, 0.05, 'square');
-    const result = checkWinner();
+    const result = checkWinner(board);
     if (result) {
       active = false;
       if (result.winner === 'draw') { wins.D++; hudD.textContent = wins.D; overText.textContent = "It's a draw!"; }
       else {
         wins[result.winner]++;
         (result.winner === 'X' ? hudX : hudO).textContent = wins[result.winner];
-        overText.textContent = `Player ${result.winner} wins!`;
+        overText.textContent = mode === 'ai'
+          ? (result.winner === 'X' ? 'You win! 🎉' : 'Computer wins!')
+          : `Player ${result.winner} wins!`;
         SGPGame.beep(820, 0.15, 'sine');
       }
-      SGPGame.reportResult('tictactoe', { won: result.winner !== 'draw', coinsDelta: 8, xpDelta: 10 });
+      const won = mode === 'ai' ? result.winner === 'X' : result.winner !== 'draw';
+      SGPGame.reportResult('tictactoe', { won, coinsDelta: 8, xpDelta: 10 });
       render(result.line, i);
       overlay.style.display = 'flex';
-    } else {
-      turn = turn === 'X' ? 'O' : 'X';
-      render(undefined, i);
+      return;
+    }
+    turn = turn === 'X' ? 'O' : 'X';
+    render(undefined, i);
+    if (active && mode === 'ai' && turn === 'O') {
+      setTimeout(() => { if (active) commitMove(aiPickMove()); }, 450);
     }
   }
 

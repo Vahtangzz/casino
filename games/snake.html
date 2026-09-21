@@ -18,6 +18,7 @@
         <div class="overlay-msg" id="overlay">
           <h2>🐍 Snake</h2>
           <p class="muted">Eat the food, grow longer, don't hit yourself or the wall.</p>
+          <div class="seg" id="diffPick" style="width:220px"></div>
           <button class="btn primary" id="startBtn">Start Game</button>
         </div>
       </div>
@@ -30,6 +31,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -42,15 +44,23 @@ SGPGame.renderTopbar({ id: 'snake', title: 'Snake', icon: '🐍' });
   const GRID = 20, CELL = cv.width / GRID;
   const overlay = document.getElementById('overlay');
   const hudScore = document.getElementById('hudScore'), hudBest = document.getElementById('hudBest');
-  let snake, dir, nextDir, food, score, speed, timer, running = false, paused = false;
+  let snake, dir, nextDir, food, score, speed, timer, running = false, paused = false, difficulty = 'normal';
+  const DIFF = {
+    easy:   { start: 160, step: 4, floor: 95 },
+    normal: { start: 130, step: 6, floor: 60 },
+    hard:   { start: 100, step: 8, floor: 42 },
+  };
 
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.snake) || 0;
   hudBest.textContent = best();
+  difficulty = SGPGame.mountDifficultyPicker(document.getElementById('diffPick'), 'snake',
+    [{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }],
+    'normal', v => difficulty = v);
 
   function reset() {
     snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
     dir = { x: 1, y: 0 }; nextDir = dir;
-    score = 0; speed = 130;
+    score = 0; speed = DIFF[difficulty].start;
     placeFood();
     hudScore.textContent = score;
   }
@@ -113,7 +123,7 @@ SGPGame.renderTopbar({ id: 'snake', title: 'Snake', icon: '🐍' });
       hudScore.textContent = score;
       SGPGame.beep(660, 0.06, 'square');
       placeFood();
-      if (speed > 60 && score % 4 === 0) { speed -= 6; restartTimer(); }
+      if (speed > DIFF[difficulty].floor && score % 4 === 0) { speed -= DIFF[difficulty].step; restartTimer(); }
     } else {
       snake.pop();
     }

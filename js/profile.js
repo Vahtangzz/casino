@@ -1,6 +1,12 @@
 (() => {
   const root = document.getElementById('profileRoot');
   const AVATARS = ['🙂','😎','🤖','🐱','🐶','🦊','🐼','🐸','🦄','👾','🎮','🧑‍🚀','🧙','🥷','🐯','🐲'];
+  const RANKS = [[1,'Rookie'],[5,'Regular'],[10,'Skilled'],[15,'Veteran'],[20,'Expert'],[25,'Elite'],[35,'Master'],[50,'Legend']];
+  function rankTitle(level) {
+    let t = RANKS[0][1];
+    for (const [lvl, name] of RANKS) if (level >= lvl) t = name;
+    return t;
+  }
 
   function getGuestAcc() {
     return JSON.parse(sessionStorage.getItem('sgp_guest_account_v1') || 'null');
@@ -78,6 +84,9 @@
         <div class="form-error" id="setUsernameErr"></div>
       </div>
       <div class="field"><label>Avatar</label><div class="avatar-pick" id="avatarPick"></div></div>
+      <div class="field"><label>Avatar Frame</label><div class="avatar-pick" id="framePick"></div>
+        <div class="form-hint">Unlock frames by leveling up or earning specific achievements.</div>
+      </div>
       <div class="field"><label>Change Password</label>
         <input id="pwOld" type="password" placeholder="Current password" style="margin-bottom:6px">
         <input id="pwNew" type="password" placeholder="New password" style="margin-bottom:6px">
@@ -94,6 +103,10 @@
           <button data-v="medium" class="${acc.settings.performanceMode==='medium'?'active':''}">Medium</button>
           <button data-v="high" class="${acc.settings.performanceMode==='high'?'active':''}">High</button>
         </div>
+      </div>
+      <div class="settings-row" style="display:block">
+        <span>Theme</span>
+        <div class="avatar-pick" id="themePick" style="margin-top:8px"></div>
       </div>
       <hr style="border-color:var(--border);margin:16px 0">
       <div class="field">
@@ -129,6 +142,16 @@
       saveSettings(a => a.settings.performanceMode = b.dataset.v);
     }));
 
+    const themePick = document.getElementById('themePick');
+    themePick.innerHTML = SGPCosmetics.THEMES.map(t => `
+      <button data-t="${t.id}" title="${t.name}" class="${acc.settings.theme === t.id ? 'active' : ''}"
+        style="background:linear-gradient(135deg,${t.accent},${t.accent2})"></button>`).join('');
+    themePick.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      themePick.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      saveSettings(a => a.settings.theme = b.dataset.t);
+    }));
+
     document.getElementById('exportBtn').addEventListener('click', () => {
       const blob = isGuest ? { format: 'sgp-save', version: 1, exportedAt: Date.now(), account: getGuestAcc() } : SGP.exportSave();
       if (!blob) return;
@@ -154,6 +177,24 @@
         pick.querySelectorAll('button').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         SGPUI.renderHeader('profile');
+        document.querySelector('.avatar-lg').textContent = b.dataset.a;
+      }));
+
+      const unlocked = new Set(SGPCosmetics.unlockedFrames(acc).map(f => f.id));
+      const framePick = document.getElementById('framePick');
+      framePick.innerHTML = SGPCosmetics.FRAMES.map(f => {
+        const isUnlocked = unlocked.has(f.id);
+        return `<button data-f="${f.id}" title="${f.name}${isUnlocked ? '' : ' (locked)'}"
+          class="${f.css || ''} ${acc.frame === f.id ? 'active' : ''} ${isUnlocked ? '' : 'frame-locked'}">${f.id === 'none' ? '🚫' : '🙂'}</button>`;
+      }).join('');
+      framePick.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        if (!unlocked.has(b.dataset.f)) { SGPUI.toast("You haven't unlocked that frame yet"); return; }
+        SGP.updateCurrentAccount(a => a.frame = b.dataset.f);
+        framePick.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        SGPUI.renderHeader('profile');
+        const avEl = document.querySelector('.avatar-lg');
+        avEl.className = 'avatar-lg ' + (SGPCosmetics.frameById(b.dataset.f).css || '');
       }));
 
       document.getElementById('pwSave').addEventListener('click', async () => {
@@ -193,9 +234,9 @@
     root.innerHTML = `
       ${isGuest ? `<div class="card" style="margin-bottom:16px;border-color:var(--gold)"><b>Playing as guest.</b> <span class="muted">Progress will be lost when you close this tab. <a href="#" id="guestSignup" style="color:var(--accent)">Sign up</a> to keep it.</span></div>` : ''}
       <div class="card profile-hero">
-        <div class="avatar-lg">${acc.avatar}</div>
+        <div class="avatar-lg ${SGPCosmetics.frameById(acc.frame).css || ''}">${acc.avatar}</div>
         <div><b style="font-size:18px">${SGPUI.escapeHtml(acc.username)}</b></div>
-        <div class="muted">Level ${acc.level}</div>
+        <div class="muted">Level ${acc.level} &middot; <span style="color:var(--gold)">${rankTitle(acc.level)}</span></div>
         ${xpBar(acc)}
       </div>
       ${statGrid(acc)}

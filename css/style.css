@@ -34,6 +34,33 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   animation-duration: 0.001ms !important; transition-duration: 0.001ms !important;
 }
 
+/* ---- Themes — swap the accent pair, everything else derives from it ---- */
+html[data-theme-color="sunset"]  { --accent: #ff8a4c; --accent-2: #ff5d8f; }
+html[data-theme-color="violet"]  { --accent: #a35cf0; --accent-2: #e05ad8; }
+html[data-theme-color="forest"]  { --accent: #35d07f; --accent-2: #a8e063; }
+html[data-theme-color="crimson"] { --accent: #ff5d6c; --accent-2: #f5b942; }
+
+/* ---- Avatar frames — cosmetic unlocks, layered as a ring around any .av / .avatar-lg ---- */
+.frame-bronze { box-shadow: 0 0 0 3px #cd7f32, 0 0 12px rgba(205,127,50,.5) !important; }
+.frame-silver { box-shadow: 0 0 0 3px #c8ccd6, 0 0 12px rgba(200,204,214,.5) !important; }
+.frame-gold   { box-shadow: 0 0 0 3px #ffd700, 0 0 16px rgba(255,215,0,.6) !important; }
+.frame-neon   { animation: frameNeon 1.6s ease-in-out infinite; }
+.frame-diamond{ box-shadow: 0 0 0 3px #b9e3ff, 0 0 18px rgba(185,227,255,.75) !important; }
+.frame-legend { animation: frameLegend 2.4s linear infinite; }
+@keyframes frameNeon {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent-2), 0 0 10px rgba(53,208,186,.6); }
+  50% { box-shadow: 0 0 0 3px var(--accent-2), 0 0 22px rgba(53,208,186,.95); }
+}
+@keyframes frameLegend {
+  0%   { box-shadow: 0 0 0 3px #ff5d6c, 0 0 16px rgba(255,93,108,.6); }
+  25%  { box-shadow: 0 0 0 3px #f5b942, 0 0 16px rgba(245,185,66,.6); }
+  50%  { box-shadow: 0 0 0 3px #35d07f, 0 0 16px rgba(53,208,127,.6); }
+  75%  { box-shadow: 0 0 0 3px #5b8cff, 0 0 16px rgba(91,140,255,.6); }
+  100% { box-shadow: 0 0 0 3px #ff5d6c, 0 0 16px rgba(255,93,108,.6); }
+}
+html.perf-low [class*="frame-"] { animation: none !important; box-shadow: 0 0 0 3px var(--text-faint) !important; }
+.frame-locked { opacity: .35; filter: grayscale(1); cursor: not-allowed !important; }
+
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {

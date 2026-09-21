@@ -8,6 +8,7 @@ const SGPUI = (() => {
     html.classList.remove('perf-low', 'perf-medium', 'perf-high');
     html.classList.add('perf-' + (settings.performanceMode || 'medium'));
     html.classList.toggle('school-mode', !!settings.schoolMode);
+    html.setAttribute('data-theme-color', settings.theme || 'default');
   }
 
   function activeSettings() {
@@ -63,7 +64,7 @@ const SGPUI = (() => {
       right = `
         <div class="hdr-stat" title="Coins">🪙 ${acc.coins.toLocaleString()}</div>
         <div class="hdr-stat" title="Level">⭐ Lv.${acc.level}</div>
-        <div class="hdr-user" id="hdrUserBtn"><span class="av">${acc.avatar}</span><span>${escapeHtml(acc.username)}</span></div>
+        <div class="hdr-user" id="hdrUserBtn"><span class="av ${SGPCosmetics.frameById(acc.frame).css || ''}">${acc.avatar}</span><span>${escapeHtml(acc.username)}</span></div>
       `;
     } else if (guest) {
       right = `<span class="faint" style="font-size:12px">Playing as guest</span><button class="hdr-btn primary" id="hdrLoginBtn">Sign Up / Log In</button>`;

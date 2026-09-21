@@ -18,6 +18,7 @@
         <div class="overlay-msg" id="overlay">
           <h2>🏎️ Lane Racer</h2>
           <p class="muted">Switch lanes to dodge oncoming traffic. Survive as far as you can.</p>
+          <div class="seg" id="diffPick" style="width:220px"></div>
           <button class="btn primary" id="startBtn">Start</button>
         </div>
       </div>
@@ -30,6 +31,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -45,7 +47,11 @@ SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.racing) || 0;
   hudBest.textContent = best();
 
-  let lane, obstacles, speed, distance, spawnTimer, running, raf, stripeOffset, lastT;
+  let lane, obstacles, speed, distance, spawnTimer, running, raf, stripeOffset, lastT, gameDifficulty = 'normal';
+  const DIFF = { easy: { spawnMul: 0.72, speedCap: 7 }, normal: { spawnMul: 1, speedCap: 9 }, hard: { spawnMul: 1.35, speedCap: 11.5 } };
+  gameDifficulty = SGPGame.mountDifficultyPicker(document.getElementById('diffPick'), 'racing',
+    [{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }],
+    'normal', v => gameDifficulty = v);
 
   function reset() {
     lane = 1; obstacles = []; speed = 3.2; distance = 0; spawnTimer = 1.3; stripeOffset = 0; lastT = null;
@@ -98,15 +104,16 @@ SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
   }
 
   function update(dt) {
+    const dm = DIFF[gameDifficulty];
     distance += speed * dt * 20;
     hudScore.textContent = Math.floor(distance);
-    speed = Math.min(9, 3.2 + distance / 500);
+    speed = Math.min(dm.speedCap, 3.2 + distance / 500);
     stripeOffset = (stripeOffset + speed * dt * 60) % 30;
 
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
-      const difficulty = Math.min(1, distance / 700);
-      spawnTimer = 1.15 - difficulty * 0.6; // 1.15s early game down to a 0.55s floor
+      const rampT = Math.min(1, distance / 700);
+      spawnTimer = (1.15 - rampT * 0.6) / dm.spawnMul; // 1.15s early game down to a 0.55s floor, scaled by difficulty
       const palette = ['#e05a5a', '#e0a15a', '#5ac9e0', '#a25ae0', '#5ae08c', '#e05aa8'];
       obstacles.push({ lane: chooseLane(), y: -30, color: palette[Math.floor(Math.random() * palette.length)] });
     }

@@ -16,7 +16,7 @@ const SGP_GAMES = [
     tags: ['endless', 'under5', 'highscore'], path: 'games/2048.html' },
   { id: 'minesweeper', name: 'Minesweeper', icon: '💣', category: 'puzzle', desc: 'Clear the board without triggering a mine.',
     tags: ['under5', 'highscore'], path: 'games/minesweeper.html' },
-  { id: 'tictactoe', name: 'Tic-Tac-Toe', icon: '❌', category: 'puzzle', desc: 'Two players, one device. First to three in a row.',
+  { id: 'tictactoe', name: 'Tic-Tac-Toe', icon: '❌', category: 'puzzle', desc: 'Local 2-player or play against a computer AI. First to three in a row.',
     tags: ['under1', 'multiplayer'], path: 'games/tictactoe.html' },
   { id: 'clicker', name: 'Coin Clicker', icon: '👆', category: 'casino', desc: 'Click to earn coins and buy upgrades. Idle-friendly.',
     tags: ['endless', 'highscore'], path: 'games/clicker.html' },

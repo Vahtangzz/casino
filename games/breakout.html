@@ -18,6 +18,7 @@
         <div class="overlay-msg" id="overlay">
           <h2>🧱 Breakout</h2>
           <p class="muted">Bounce the ball with your paddle and clear every brick.</p>
+          <div class="seg" id="diffPick" style="width:220px"></div>
           <button class="btn primary" id="startBtn">Start</button>
         </div>
       </div>
@@ -30,6 +31,7 @@
 <script src="../js/storage.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/achievements.js"></script>
+<script src="../js/cosmetics.js"></script>
 <script src="../js/games-data.js"></script>
 <script src="../js/ui.js"></script>
 <script src="../js/game-api.js"></script>
@@ -45,13 +47,20 @@ SGPGame.renderTopbar({ id: 'breakout', title: 'Breakout', icon: '🧱' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.breakout) || 0;
   hudBest.textContent = best();
 
-  const PADDLE_W = 70, PADDLE_H = 10, BALL_R = 6;
+  let PADDLE_W = 70;
+  const PADDLE_H = 10, BALL_R = 6;
   const ROWS = 5, COLS = 8, BRICK_W = W / COLS, BRICK_H = 18;
-  let paddleX, ball, bricks, score, lives, running, raf, moveDir = 0;
+  let paddleX, ball, bricks, score, lives, running, raf, moveDir = 0, difficulty = 'normal';
+  const DIFF = { easy: { paddle: 90, speed: 0.8 }, normal: { paddle: 70, speed: 1 }, hard: { paddle: 54, speed: 1.25 } };
+  difficulty = SGPGame.mountDifficultyPicker(document.getElementById('diffPick'), 'breakout',
+    [{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }],
+    'normal', v => difficulty = v);
 
   function reset() {
+    PADDLE_W = DIFF[difficulty].paddle;
+    const s = DIFF[difficulty].speed;
     paddleX = W / 2 - PADDLE_W / 2;
-    ball = { x: W / 2, y: H - 40, vx: 2.6, vy: -3.4 };
+    ball = { x: W / 2, y: H - 40, vx: 2.6 * s, vy: -3.4 * s };
     bricks = [];
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) bricks.push({ x: c * BRICK_W, y: r * BRICK_H + 30, alive: true, color: `hsl(${200 + r * 30},70%,60%)` });
     score = 0; lives = 3;
@@ -116,7 +125,7 @@ SGPGame.renderTopbar({ id: 'breakout', title: 'Breakout', icon: '🧱' });
     if (ball.y > H) {
       lives--; hudLives.textContent = lives;
       if (lives <= 0) return gameOver(false);
-      ball = { x: W / 2, y: H - 40, vx: 2.6, vy: -3.4 };
+      ball = { x: W / 2, y: H - 40, vx: 2.6 * DIFF[difficulty].speed, vy: -3.4 * DIFF[difficulty].speed };
     }
 
     if (bricks.every(b => !b.alive)) return gameOver(true);
