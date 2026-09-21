@@ -143,14 +143,16 @@
     }));
 
     const themePick = document.getElementById('themePick');
-    themePick.innerHTML = SGPCosmetics.THEMES.map(t => `
-      <button data-t="${t.id}" title="${t.name}" class="${acc.settings.theme === t.id ? 'active' : ''}"
-        style="background:linear-gradient(135deg,${t.accent},${t.accent2})"></button>`).join('');
-    themePick.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-      themePick.querySelectorAll('button').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      saveSettings(a => a.settings.theme = b.dataset.t);
-    }));
+    try {
+      themePick.innerHTML = SGPCosmetics.THEMES.map(t => `
+        <button data-t="${t.id}" title="${t.name}" class="${acc.settings.theme === t.id ? 'active' : ''}"
+          style="background:linear-gradient(135deg,${t.accent},${t.accent2})"></button>`).join('');
+      themePick.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        themePick.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        saveSettings(a => a.settings.theme = b.dataset.t);
+      }));
+    } catch (e) { themePick.innerHTML = '<span class="faint" style="font-size:11.5px">Couldn\'t load themes — try refreshing the page.</span>'; }
 
     document.getElementById('exportBtn').addEventListener('click', () => {
       const blob = isGuest ? { format: 'sgp-save', version: 1, exportedAt: Date.now(), account: getGuestAcc() } : SGP.exportSave();
@@ -180,8 +182,9 @@
         document.querySelector('.avatar-lg').textContent = b.dataset.a;
       }));
 
-      const unlocked = new Set(SGPCosmetics.unlockedFrames(acc).map(f => f.id));
       const framePick = document.getElementById('framePick');
+      try {
+      const unlocked = new Set(SGPCosmetics.unlockedFrames(acc).map(f => f.id));
       framePick.innerHTML = SGPCosmetics.FRAMES.map(f => {
         const isUnlocked = unlocked.has(f.id);
         return `<button data-f="${f.id}" title="${f.name}${isUnlocked ? '' : ' (locked)'}"
@@ -196,6 +199,7 @@
         const avEl = document.querySelector('.avatar-lg');
         avEl.className = 'avatar-lg ' + (SGPCosmetics.frameById(b.dataset.f).css || '');
       }));
+      } catch (e) { framePick.innerHTML = '<span class="faint" style="font-size:11.5px">Couldn\'t load frames — try refreshing the page.</span>'; }
 
       document.getElementById('pwSave').addEventListener('click', async () => {
         const errEl = document.getElementById('pwErr');
@@ -234,7 +238,7 @@
     root.innerHTML = `
       ${isGuest ? `<div class="card" style="margin-bottom:16px;border-color:var(--gold)"><b>Playing as guest.</b> <span class="muted">Progress will be lost when you close this tab. <a href="#" id="guestSignup" style="color:var(--accent)">Sign up</a> to keep it.</span></div>` : ''}
       <div class="card profile-hero">
-        <div class="avatar-lg ${SGPCosmetics.frameById(acc.frame).css || ''}">${acc.avatar}</div>
+        <div class="avatar-lg ${SGPUI.frameCssSafe(acc.frame)}">${acc.avatar}</div>
         <div><b style="font-size:18px">${SGPUI.escapeHtml(acc.username)}</b></div>
         <div class="muted">Level ${acc.level} &middot; <span style="color:var(--gold)">${rankTitle(acc.level)}</span></div>
         ${xpBar(acc)}

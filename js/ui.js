@@ -64,7 +64,7 @@ const SGPUI = (() => {
       right = `
         <div class="hdr-stat" title="Coins">🪙 ${acc.coins.toLocaleString()}</div>
         <div class="hdr-stat" title="Level">⭐ Lv.${acc.level}</div>
-        <div class="hdr-user" id="hdrUserBtn"><span class="av ${SGPCosmetics.frameById(acc.frame).css || ''}">${acc.avatar}</span><span>${escapeHtml(acc.username)}</span></div>
+        <div class="hdr-user" id="hdrUserBtn"><span class="av ${frameCssSafe(acc.frame)}">${acc.avatar}</span><span>${escapeHtml(acc.username)}</span></div>
       `;
     } else if (guest) {
       right = `<span class="faint" style="font-size:12px">Playing as guest</span><button class="hdr-btn primary" id="hdrLoginBtn">Sign Up / Log In</button>`;
@@ -91,6 +91,12 @@ const SGPUI = (() => {
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // A cosmetics script that's slow, blocked (ad-blocker) or missing should never take the whole page down with it.
+  function frameCssSafe(frameId) {
+    try { return (window.SGPCosmetics && SGPCosmetics.frameById(frameId).css) || ''; }
+    catch (e) { return ''; }
   }
 
   function openModal(innerHtml) {
@@ -147,7 +153,7 @@ const SGPUI = (() => {
 
   function fmt(n) { return Math.round(n).toLocaleString(); }
 
-  return { BASE, applySettings, activeSettings, initSettings, toast, levelForXP, grantXPAndCoins, renderHeader, openModal, openAuthModal, escapeHtml, fmt };
+  return { BASE, applySettings, activeSettings, initSettings, toast, levelForXP, grantXPAndCoins, renderHeader, openModal, openAuthModal, escapeHtml, fmt, frameCssSafe };
 })();
 
 document.addEventListener('DOMContentLoaded', () => { SGPUI.initSettings(); });
