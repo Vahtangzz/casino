@@ -64,19 +64,37 @@ SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
 
   function laneX(l) { return l * LW + LW / 2; }
 
+  function drawCar(x, y, bodyColor, windowColor) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(0, 20, 20, 6, 0, 0, Math.PI * 2); ctx.fill();
+    const grad = ctx.createLinearGradient(-20, 0, 20, 0);
+    grad.addColorStop(0, shade2(bodyColor, -12)); grad.addColorStop(0.5, bodyColor); grad.addColorStop(1, shade2(bodyColor, -12));
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.roundRect(-20, -18, 40, 36, 9); ctx.fill();
+    ctx.fillStyle = windowColor;
+    ctx.beginPath(); ctx.roundRect(-13, -11, 26, 14, 5); ctx.fill();
+    ctx.restore();
+  }
+  function shade2(hex, amt) {
+    const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    if (!m) return hex;
+    const c = [1, 2, 3].map(i => Math.max(0, Math.min(255, parseInt(m[i], 16) + amt)));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
   function draw() {
-    ctx.fillStyle = '#1a1f2e'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#2a3555'; ctx.lineWidth = 2; ctx.setLineDash([16, 14]);
+    const road = ctx.createLinearGradient(0, 0, W, 0);
+    road.addColorStop(0, '#161b28'); road.addColorStop(0.5, '#1f2438'); road.addColorStop(1, '#161b28');
+    ctx.fillStyle = road; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 3; ctx.setLineDash([18, 16]);
     for (let i = 1; i < LANES; i++) {
       ctx.beginPath(); ctx.moveTo(i * LW, stripeOffset - 30); ctx.lineTo(i * LW, H); ctx.stroke();
     }
     ctx.setLineDash([]);
-    obstacles.forEach(o => {
-      ctx.fillStyle = o.color;
-      ctx.fillRect(laneX(o.lane) - 22, o.y - 18, 44, 36);
-    });
-    ctx.fillStyle = '#5b8cff';
-    ctx.fillRect(laneX(lane) - 20, H - 60, 40, 36);
+    obstacles.forEach(o => drawCar(laneX(o.lane), o.y, o.color, '#0f1420'));
+    drawCar(laneX(lane), H - 42, '#5b8cff', '#0f1420');
   }
 
   function update(dt) {
@@ -89,7 +107,8 @@ SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
     if (spawnTimer <= 0) {
       const difficulty = Math.min(1, distance / 700);
       spawnTimer = 1.15 - difficulty * 0.6; // 1.15s early game down to a 0.55s floor
-      obstacles.push({ lane: chooseLane(), y: -30, color: `hsl(${Math.random() * 360},65%,55%)` });
+      const palette = ['#e05a5a', '#e0a15a', '#5ac9e0', '#a25ae0', '#5ae08c', '#e05aa8'];
+      obstacles.push({ lane: chooseLane(), y: -30, color: palette[Math.floor(Math.random() * palette.length)] });
     }
     obstacles.forEach(o => o.y += speed * dt * 60);
     obstacles = obstacles.filter(o => o.y < H + 40);

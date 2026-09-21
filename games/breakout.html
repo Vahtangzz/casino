@@ -59,10 +59,35 @@ SGPGame.renderTopbar({ id: 'breakout', title: 'Breakout', icon: '🧱' });
   }
 
   function draw() {
-    ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, W, H);
-    bricks.forEach(b => { if (b.alive) { ctx.fillStyle = b.color; ctx.fillRect(b.x + 2, b.y, BRICK_W - 4, BRICK_H - 4); } });
-    ctx.fillStyle = '#5b8cff'; ctx.fillRect(paddleX, H - 16, PADDLE_W, PADDLE_H);
-    ctx.fillStyle = '#f5b942'; ctx.beginPath(); ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2); ctx.fill();
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#141b30'); bg.addColorStop(1, '#0c101c');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    bricks.forEach(b => {
+      if (!b.alive) return;
+      const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + BRICK_H - 4);
+      grad.addColorStop(0, b.color); grad.addColorStop(1, shade(b.color, -18));
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.roundRect(b.x + 2, b.y, BRICK_W - 4, BRICK_H - 4, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.fillRect(b.x + 3, b.y + 1, BRICK_W - 6, 2);
+    });
+
+    const paddleGrad = ctx.createLinearGradient(paddleX, 0, paddleX + PADDLE_W, 0);
+    paddleGrad.addColorStop(0, '#4270e6'); paddleGrad.addColorStop(0.5, '#8fb0ff'); paddleGrad.addColorStop(1, '#4270e6');
+    ctx.fillStyle = paddleGrad;
+    ctx.beginPath(); ctx.roundRect(paddleX, H - 16, PADDLE_W, PADDLE_H, 5); ctx.fill();
+
+    const ballGrad = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_R + 1);
+    ballGrad.addColorStop(0, '#ffe28a'); ballGrad.addColorStop(1, '#f5b942');
+    ctx.fillStyle = ballGrad;
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function shade(hsl, lDelta) {
+    const m = hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+    if (!m) return hsl;
+    return `hsl(${m[1]},${m[2]}%,${Math.max(0, +m[3] + lDelta)}%)`;
   }
 
   function update() {

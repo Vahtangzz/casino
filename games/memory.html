@@ -6,12 +6,16 @@
 <title>Memory Match — School Games Portal</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
-  .mm-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 440px; }
-  .mm-card { aspect-ratio: 1; border-radius: 10px; background: var(--bg-elev-2); border: 1px solid var(--border);
+  .mm-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 440px; aspect-ratio: 1; }
+  .mm-card { aspect-ratio: 1; border-radius: 10px; background: linear-gradient(160deg, var(--bg-elev-2), var(--bg-elev)); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1;
-    font-size: clamp(20px, 7vw, 30px); cursor: pointer; user-select: none; transition: background var(--dur-fast), transform var(--dur-fast); }
+    font-size: clamp(20px, 7vw, 30px); cursor: pointer; user-select: none; transition: background var(--dur-fast), transform var(--dur-fast);
+    box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 3px 0 rgba(0,0,0,.35), 0 6px 14px -8px rgba(0,0,0,.6); }
+  .mm-card:hover { transform: translateY(-2px); }
+  .mm-card:active { transform: translateY(0) scale(.96); }
   .mm-card.hidden { color: var(--text-faint); }
-  .mm-card.matched { background: rgba(53,208,127,.15); border-color: var(--success); cursor: default; }
+  .mm-card.matched { background: rgba(53,208,127,.15); border-color: var(--success); cursor: default; box-shadow: 0 0 0 1px var(--success) inset; }
+  html.perf-low .mm-card:hover, html.perf-low .mm-card:active { transform: none; }
   .mm-card.flipping { animation: mmFlip .25s ease; }
   @keyframes mmFlip { from { transform: scaleX(0.2); } to { transform: scaleX(1); } }
   html.perf-low .mm-card.flipping { animation: none; }

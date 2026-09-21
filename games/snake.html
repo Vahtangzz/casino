@@ -60,15 +60,44 @@ SGPGame.renderTopbar({ id: 'snake', title: 'Snake', icon: '🐍' });
     while (snake.some(s => s.x === food.x && s.y === food.y));
   }
 
+  let pulseT = 0;
   function draw() {
     ctx.fillStyle = '#0f1420';
     ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.fillStyle = '#f5b942';
-    ctx.fillRect(food.x * CELL + 2, food.y * CELL + 2, CELL - 4, CELL - 4);
+    ctx.strokeStyle = 'rgba(255,255,255,.03)';
+    for (let i = 1; i < GRID; i++) {
+      ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, cv.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(cv.width, i * CELL); ctx.stroke();
+    }
+
+    pulseT += 0.12;
+    const pulse = 1 + Math.sin(pulseT) * 0.08;
+    const fx = food.x * CELL + CELL / 2, fy = food.y * CELL + CELL / 2;
+    const foodGrad = ctx.createRadialGradient(fx, fy, 1, fx, fy, (CELL / 2) * pulse);
+    foodGrad.addColorStop(0, '#ffe28a'); foodGrad.addColorStop(1, '#f5b942');
+    ctx.fillStyle = foodGrad;
+    ctx.beginPath(); ctx.arc(fx, fy, (CELL / 2 - 2) * pulse, 0, Math.PI * 2); ctx.fill();
+
     snake.forEach((s, i) => {
-      ctx.fillStyle = i === 0 ? '#5b8cff' : '#35d0ba';
-      ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
+      const isHead = i === 0;
+      const grad = ctx.createLinearGradient(s.x * CELL, s.y * CELL, s.x * CELL + CELL, s.y * CELL + CELL);
+      if (isHead) { grad.addColorStop(0, '#8fb0ff'); grad.addColorStop(1, '#4270e6'); }
+      else { grad.addColorStop(0, '#5be0cc'); grad.addColorStop(1, '#26a892'); }
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2, isHead ? 7 : 5);
+      ctx.fill();
     });
+
+    if (snake.length) {
+      const h = snake[0];
+      const cx = h.x * CELL + CELL / 2, cy = h.y * CELL + CELL / 2;
+      const ex = dir.x * 4, ey = dir.y * 4;
+      const perpX = -dir.y * 3, perpY = dir.x * 3;
+      ctx.fillStyle = '#0f1420';
+      ctx.beginPath(); ctx.arc(cx + ex + perpX, cy + ey + perpY, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + ex - perpX, cy + ey - perpY, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   function tick() {

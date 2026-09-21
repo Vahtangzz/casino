@@ -58,12 +58,22 @@ SGPGame.renderTopbar({ id: 'dodge', title: 'Dodge Storm', icon: '☄️' });
   }
 
   function draw() {
-    ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, W, H);
+    const bg = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, H);
+    bg.addColorStop(0, '#161d33'); bg.addColorStop(1, '#0a0d17');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
     rocks.forEach(r => {
-      ctx.fillStyle = '#ff5d6c';
+      const grad = ctx.createRadialGradient(r.x - r.r * 0.3, r.y - r.r * 0.3, 1, r.x, r.y, r.r);
+      grad.addColorStop(0, '#ff9aa3'); grad.addColorStop(0.6, '#ff5d6c'); grad.addColorStop(1, '#b33a44');
+      ctx.fillStyle = grad;
       ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.fill();
     });
-    ctx.fillStyle = '#35d0ba';
+
+    ctx.strokeStyle = 'rgba(53,208,186,.35)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(player.x, player.y, player.r + 5, 0, Math.PI * 2); ctx.stroke();
+    const pGrad = ctx.createRadialGradient(player.x - 3, player.y - 3, 1, player.x, player.y, player.r);
+    pGrad.addColorStop(0, '#8fe8db'); pGrad.addColorStop(1, '#26a892');
+    ctx.fillStyle = pGrad;
     ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2); ctx.fill();
   }
 

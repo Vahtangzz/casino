@@ -9,9 +9,14 @@
   .ttt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 360px; }
   .ttt-cell { aspect-ratio: 1; border-radius: 10px; background: var(--bg-elev-2); border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1;
-    font-size: clamp(30px, 10vw, 44px); font-weight: 800; cursor: pointer; transition: background var(--dur-fast); }
-  .ttt-cell.x { color: var(--accent); } .ttt-cell.o { color: var(--accent-2); }
+    font-size: clamp(30px, 10vw, 44px); font-weight: 800; cursor: pointer; transition: background var(--dur-fast), transform var(--dur-fast);
+    box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 3px 0 rgba(0,0,0,.35); }
+  .ttt-cell:not(.x):not(.o):hover { transform: translateY(-2px); background: var(--bg-elev); }
+  .ttt-cell.x { color: var(--accent); text-shadow: 0 0 16px rgba(91,140,255,.5); }
+  .ttt-cell.o { color: var(--accent-2); text-shadow: 0 0 16px rgba(53,208,186,.5); }
   .ttt-cell.win { background: rgba(245,185,66,.2); border-color: var(--gold); }
+  html.perf-low .ttt-cell:hover { transform: none; }
+  html.perf-low .ttt-cell.x, html.perf-low .ttt-cell.o { text-shadow: none; }
   .ttt-cell.mark-new { animation: tttPop .2s ease; }
   @keyframes tttPop { from { transform: scale(.5); opacity: .3; } to { transform: scale(1); opacity: 1; } }
   html.perf-low .ttt-cell.mark-new { animation: none; }

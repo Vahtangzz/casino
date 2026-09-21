@@ -44,7 +44,10 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.flappy) || 0;
   hudBest.textContent = best();
 
-  let bird, pipes, score, running = false, raf, gapH;
+  let bird, pipes, score, running = false, raf, gapH, lastT;
+  const GRAVITY = 620;       // px/s^2 -- floaty, not a brick
+  const FLAP_VELOCITY = -300; // px/s
+  const PIPE_SPEED = 118;    // px/s
 
   function reset() {
     bird = { x: 70, y: H / 2, vy: 0 };
@@ -63,14 +66,14 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
 
   function flap() {
     if (!running) return;
-    bird.vy = -5.8;
+    bird.vy = FLAP_VELOCITY;
     SGPGame.beep(500, 0.05, 'square');
   }
 
-  function update() {
-    bird.vy += 0.26;
-    bird.y += bird.vy;
-    pipes.forEach(p => p.x -= 2.15);
+  function update(dt) {
+    bird.vy += GRAVITY * dt;
+    bird.y += bird.vy * dt;
+    pipes.forEach(p => p.x -= PIPE_SPEED * dt);
     if (pipes.length && pipes[pipes.length - 1].x < W - 220) spawnPipe();
     if (pipes.length && pipes[0].x < -60) pipes.shift();
 
@@ -88,20 +91,43 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
     if (hitFloor || hitPipe) return gameOver();
   }
 
-  function draw() {
-    ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#1d2740';
-    pipes.forEach(p => {
-      ctx.fillRect(p.x, 0, 34, p.gapY);
-      ctx.fillRect(p.x, p.gapY + gapH, 34, H - (p.gapY + gapH));
-    });
-    ctx.fillStyle = '#5b8cff';
-    ctx.beginPath(); ctx.arc(bird.x, bird.y, 12, 0, Math.PI * 2); ctx.fill();
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#182140'); sky.addColorStop(1, '#0c1120');
+
+  function drawPipe(x, top, bottom) {
+    const grad = ctx.createLinearGradient(x, 0, x + 34, 0);
+    grad.addColorStop(0, '#26335c'); grad.addColorStop(0.5, '#39508f'); grad.addColorStop(1, '#26335c');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.roundRect(x, 0, 34, top, [0, 0, 6, 6]); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(x, H - bottom, 34, bottom, [6, 6, 0, 0]); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    ctx.fillRect(x + 4, 0, 4, top);
+    ctx.fillRect(x + 4, H - bottom, 4, bottom);
   }
 
-  function loop() {
+  function draw() {
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    pipes.forEach(p => drawPipe(p.x, p.gapY, H - (p.gapY + gapH)));
+
+    ctx.save();
+    ctx.translate(bird.x, bird.y);
+    ctx.rotate(Math.max(-0.5, Math.min(0.9, bird.vy / 500)));
+    const bodyGrad = ctx.createRadialGradient(-4, -4, 2, 0, 0, 13);
+    bodyGrad.addColorStop(0, '#8fb0ff'); bodyGrad.addColorStop(1, '#4270e6');
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath(); ctx.ellipse(0, 0, 13, 11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f5b942';
+    ctx.beginPath(); ctx.moveTo(11, -2); ctx.lineTo(20, 1); ctx.lineTo(11, 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#0f1420';
+    ctx.beginPath(); ctx.arc(4, -4, 2.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function loop(t) {
     if (!running) return;
-    update();
+    const dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 1 / 60;
+    lastT = t;
+    update(dt);
     if (running) { draw(); raf = requestAnimationFrame(loop); }
   }
 
@@ -120,7 +146,7 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
   function start() {
     reset(); draw();
     overlay.style.display = 'none';
-    running = true;
+    running = true; lastT = null;
     raf = requestAnimationFrame(loop);
   }
 
