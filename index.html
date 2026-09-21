@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velvet Casino</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">♠</div>
+        <div>
+          <h1>VELVET <span>CASINO</span></h1>
+          <small>PLAY MONEY ONLY</small>
+        </div>
+      </div>
+      <div class="balance-box">
+        <span>VIRTUAL BALANCE</span>
+        <strong id="balance">10,000</strong>
+        <button id="resetBtn" class="tiny-btn">RESET</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <button class="nav-btn active" data-game="slots"><span>🎰</span> Slots</button>
+        <button class="nav-btn" data-game="blackjack"><span>🃏</span> Blackjack</button>
+        <button class="nav-btn" data-game="roulette"><span>🎡</span> Roulette</button>
+        <button class="nav-btn" data-game="coinflip"><span>🪙</span> Coin Flip</button>
+
+        <div class="stats">
+          <h3>SESSION</h3>
+          <div><span>Games</span><b id="games">0</b></div>
+          <div><span>Wins</span><b id="wins">0</b></div>
+          <div><span>Losses</span><b id="losses">0</b></div>
+          <div><span>Profit</span><b id="profit">0</b></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section id="slots" class="game active-game">
+          <div class="game-head">
+            <div>
+              <p class="eyebrow">CLASSIC REELS</p>
+              <h2>🎰 Lucky Velvet</h2>
+              <p>Match symbols across the center line.</p>
+            </div>
+            <div class="jackpot">JACKPOT <strong>25,000</strong></div>
+          </div>
+
+          <div class="machine">
+            <div class="reels">
+              <div class="reel" id="reel1">🍒</div>
+              <div class="reel" id="reel2">7️⃣</div>
+              <div class="reel" id="reel3">💎</div>
+            </div>
+            <div id="slotResult" class="result">Place your bet and spin.</div>
+          </div>
+
+          <div class="controls">
+            <label>BET <input id="slotBet" type="number" min="10" max="1000" step="10" value="100"></label>
+            <button id="spinBtn" class="primary">SPIN 🎰</button>
+          </div>
+          <div class="paytable">
+            <span>3x 7️⃣ = <b>25x</b></span>
+            <span>3x 💎 = <b>15x</b></span>
+            <span>3x 🍒 = <b>8x</b></span>
+            <span>2 matching = <b>2x</b></span>
+          </div>
+        </section>
+
+        <section id="blackjack" class="game">
+          <div class="game-head">
+            <div>
+              <p class="eyebrow">21 TABLE</p>
+              <h2>🃏 Blackjack</h2>
+              <p>Beat the dealer without going over 21.</p>
+            </div>
+          </div>
+
+          <div class="cards-area">
+            <div class="hand-block">
+              <h3>DEALER <span id="dealerScore">?</span></h3>
+              <div id="dealerCards" class="cards"></div>
+            </div>
+            <div class="hand-block">
+              <h3>YOU <span id="playerScore">0</span></h3>
+              <div id="playerCards" class="cards"></div>
+            </div>
+          </div>
+          <div id="blackjackResult" class="result">Start a new hand.</div>
+          <div class="controls">
+            <label>BET <input id="blackjackBet" type="number" min="10" max="1000" step="10" value="100"></label>
+            <button id="dealBtn" class="primary">DEAL</button>
+            <button id="hitBtn" class="secondary" disabled>HIT</button>
+            <button id="standBtn" class="secondary" disabled>STAND</button>
+          </div>
+        </section>
+
+        <section id="roulette" class="game">
+          <div class="game-head">
+            <div>
+              <p class="eyebrow">EUROPEAN WHEEL</p>
+              <h2>🎡 Roulette</h2>
+              <p>Choose a color or number, then spin.</p>
+            </div>
+          </div>
+          <div class="roulette-wheel">
+            <div id="rouletteNumber">?</div>
+            <small id="rouletteColor">MAKE YOUR BET</small>
+          </div>
+          <div class="roulette-options">
+            <button class="bet-choice red" data-choice="red">RED <b>2x</b></button>
+            <button class="bet-choice black" data-choice="black">BLACK <b>2x</b></button>
+            <button class="bet-choice green" data-choice="green">GREEN <b>14x</b></button>
+          </div>
+          <div class="number-grid" id="numberGrid"></div>
+          <div class="controls">
+            <label>BET <input id="rouletteBet" type="number" min="10" max="1000" step="10" value="100"></label>
+            <span id="rouletteChoice" class="choice-label">No choice selected</span>
+            <button id="rouletteSpin" class="primary">SPIN 🎡</button>
+          </div>
+          <div id="rouletteResult" class="result">Pick a color or number.</div>
+        </section>
+
+        <section id="coinflip" class="game">
+          <div class="game-head">
+            <div>
+              <p class="eyebrow">50 / 50</p>
+              <h2>🪙 Coin Flip</h2>
+              <p>Pick heads or tails.</p>
+            </div>
+          </div>
+          <div id="coin" class="coin">?</div>
+          <div class="coin-options">
+            <button class="coin-choice" data-choice="heads">HEADS</button>
+            <button class="coin-choice" data-choice="tails">TAILS</button>
+          </div>
+          <div class="controls">
+            <label>BET <input id="coinBet" type="number" min="10" max="1000" step="10" value="100"></label>
+            <span id="coinChoice" class="choice-label">No choice selected</span>
+            <button id="flipBtn" class="primary">FLIP 🪙</button>
+          </div>
+          <div id="coinResult" class="result">Choose a side.</div>
+        </section>
+      </main>
+    </div>
+
+    <footer>
+      <strong>PLAY MONEY ONLY</strong> · No real-money gambling · Credits have no cash value
+    </footer>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
