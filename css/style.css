@@ -26,8 +26,8 @@
 html.perf-low { --dur-fast: 0ms; --dur-med: 0ms; --particles: 0; }
 html.perf-medium { --dur-fast: 80ms; --dur-med: 140ms; --particles: 0.4; }
 html.perf-high { --dur-fast: 120ms; --dur-med: 220ms; --particles: 1; }
-html.school-mode .decorative-fx { display: none !important; }
-html.perf-low .decorative-fx, html.perf-low .glow, html.perf-low .blur-bg {
+html.school-mode .decorative-fx, html.perf-low .decorative-fx { display: none !important; }
+html.perf-low .decorative-fx, html.perf-low .glow, html.perf-low .blur-bg, html.perf-low .game-card {
   animation: none !important; filter: none !important; box-shadow: none !important;
 }
 html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
@@ -132,13 +132,31 @@ label { font-size: 12.5px; font-weight: 700; color: var(--text-dim); display: bl
 /* ---- Toast ---- */
 #toast-root { position: fixed; bottom: 16px; right: 16px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
 .toast { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); animation: toastIn var(--dur-med) ease; max-width: 280px; }
-.toast.success { border-color: var(--success); }
-.toast.gold { border-color: var(--gold); }
-@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.toast.success { border-color: var(--success); box-shadow: var(--shadow), 0 0 0 1px rgba(53,208,127,.25); }
+.toast.gold { border-color: var(--gold); box-shadow: var(--shadow), 0 0 18px -2px rgba(245,185,66,.55); animation: toastIn var(--dur-med) ease, toastPulse 1.4s ease 1; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastPulse { 0%, 100% { box-shadow: var(--shadow), 0 0 18px -2px rgba(245,185,66,.55); } 50% { box-shadow: var(--shadow), 0 0 28px 2px rgba(245,185,66,.8); } }
+
+/* Brief bump used when a live stat (coins/level) changes value */
+.stat-bump { animation: statBump .35s ease; }
+@keyframes statBump { 0% { transform: scale(1); } 40% { transform: scale(1.18); color: var(--gold); } 100% { transform: scale(1); } }
+html.perf-low .stat-bump, html.perf-low .toast.gold { animation: toastIn var(--dur-med) ease; }
 
 /* ---- Home / filters ---- */
-.hero { padding: 18px 0 8px; }
+.hero { padding: 18px 0 8px; position: relative; }
 .hero h1 { font-size: 24px; }
+.hero-glow {
+  position: absolute; top: -80px; left: 50%; width: 520px; height: 260px; z-index: -1;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 30% 40%, rgba(91,140,255,.28), transparent 60%),
+              radial-gradient(circle at 70% 60%, rgba(53,208,186,.22), transparent 60%);
+  filter: blur(40px);
+  animation: heroDrift 14s ease-in-out infinite alternate;
+}
+@keyframes heroDrift {
+  from { transform: translateX(-52%) scale(1); }
+  to { transform: translateX(-48%) scale(1.08); }
+}
 .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 18px; align-items: center; }
 .chip { padding: 7px 13px; border-radius: 999px; background: var(--bg-elev); border: 1px solid var(--border); font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--text-dim); }
 .chip:hover { color: var(--text); }
@@ -150,9 +168,13 @@ label { font-size: 12.5px; font-weight: 700; color: var(--text-dim); display: bl
 .game-card {
   position: relative; background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
-  transition: transform var(--dur-fast), border-color var(--dur-fast);
+  transition: transform var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
-.game-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.game-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 10px 26px -8px rgba(91,140,255,.45); }
+.game-card:active { transform: translateY(-1px) scale(.98); }
+.game-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.game-card .thumb { transition: transform var(--dur-fast); }
+.game-card:hover .thumb { transform: scale(1.08); }
 .game-card .thumb { font-size: 34px; height: 64px; display: flex; align-items: center; justify-content: center; background: var(--bg-elev-2); border-radius: 10px; }
 .game-card .gname { font-weight: 800; font-size: 13.5px; }
 .game-card .gtags { display: flex; flex-wrap: wrap; gap: 4px; }

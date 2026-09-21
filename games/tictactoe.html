@@ -6,11 +6,16 @@
 <title>Tic-Tac-Toe — School Games Portal</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
-  .ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 300px; }
+  .ttt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 360px; }
   .ttt-cell { aspect-ratio: 1; border-radius: 10px; background: var(--bg-elev-2); border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; cursor: pointer; }
+    display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1;
+    font-size: clamp(30px, 10vw, 44px); font-weight: 800; cursor: pointer; transition: background var(--dur-fast); }
   .ttt-cell.x { color: var(--accent); } .ttt-cell.o { color: var(--accent-2); }
   .ttt-cell.win { background: rgba(245,185,66,.2); border-color: var(--gold); }
+  .ttt-cell.mark-new { animation: tttPop .2s ease; }
+  @keyframes tttPop { from { transform: scale(.5); opacity: .3; } to { transform: scale(1); opacity: 1; } }
+  html.perf-low .ttt-cell.mark-new { animation: none; }
+  .stage-wrap.board-wrap { display: block; width: 100%; }
 </style>
 </head>
 <body>
@@ -20,7 +25,7 @@
     <div id="gameTopbar"></div>
     <div class="game-stage">
       <div class="game-hud"><span>X wins: <b id="hudX">0</b></span><span>O wins: <b id="hudO">0</b></span><span>Draws: <b id="hudD">0</b></span></div>
-      <div class="stage-wrap">
+      <div class="stage-wrap board-wrap">
         <div class="ttt-grid" id="grid"></div>
         <div class="overlay-msg" id="overlay" style="display:none">
           <h2 id="overText"></h2>
@@ -48,8 +53,8 @@ SGPGame.renderTopbar({ id: 'tictactoe', title: 'Tic-Tac-Toe', icon: '❌' });
   const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   let board, turn, wins = { X: 0, O: 0, D: 0 }, active;
 
-  function render(winLine) {
-    gridEl.innerHTML = board.map((v, i) => `<div class="ttt-cell ${v ? v.toLowerCase() : ''} ${winLine && winLine.includes(i) ? 'win' : ''}" data-i="${i}">${v || ''}</div>`).join('');
+  function render(winLine, newIndex) {
+    gridEl.innerHTML = board.map((v, i) => `<div class="ttt-cell ${v ? v.toLowerCase() : ''} ${winLine && winLine.includes(i) ? 'win' : ''} ${i === newIndex ? 'mark-new' : ''}" data-i="${i}">${v || ''}</div>`).join('');
     gridEl.querySelectorAll('.ttt-cell').forEach(el => el.addEventListener('click', () => play(+el.dataset.i)));
     hint.textContent = active ? `Player ${turn}'s turn` : '';
   }
@@ -78,11 +83,11 @@ SGPGame.renderTopbar({ id: 'tictactoe', title: 'Tic-Tac-Toe', icon: '❌' });
         SGPGame.beep(820, 0.15, 'sine');
       }
       SGPGame.reportResult('tictactoe', { won: result.winner !== 'draw', coinsDelta: 8, xpDelta: 10 });
-      render(result.line);
+      render(result.line, i);
       overlay.style.display = 'flex';
     } else {
       turn = turn === 'X' ? 'O' : 'X';
-      render();
+      render(undefined, i);
     }
   }
 

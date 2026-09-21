@@ -6,8 +6,13 @@
 <title>2048 — School Games Portal</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
-  .g2048 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 340px; background: var(--bg); padding: 8px; border-radius: 10px; }
-  .tile { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; background: var(--bg-elev-2); transition: background var(--dur-fast); }
+  .g2048 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 400px; background: var(--bg); padding: 10px; border-radius: 10px; }
+  .tile { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1;
+    font-weight: 800; font-size: clamp(16px, 5.5vw, 24px); background: var(--bg-elev-2); transition: background var(--dur-fast); }
+  .tile.tile-new { animation: tilePop .15s ease; }
+  @keyframes tilePop { from { transform: scale(.6); } to { transform: scale(1); } }
+  html.perf-low .tile.tile-new { animation: none; }
+  .stage-wrap.board-wrap { display: block; width: 100%; }
   .tile[data-v="2"]{background:#2a3555} .tile[data-v="4"]{background:#31406b} .tile[data-v="8"]{background:#3a4a8a;color:#fff}
   .tile[data-v="16"]{background:#4a5ecb;color:#fff} .tile[data-v="32"]{background:#5b6cf0;color:#fff} .tile[data-v="64"]{background:#7a5cf0;color:#fff}
   .tile[data-v="128"]{background:#a35cf0;color:#fff} .tile[data-v="256"]{background:#d05cd8;color:#fff} .tile[data-v="512"]{background:#f0669c;color:#fff}
@@ -21,7 +26,7 @@
     <div id="gameTopbar"></div>
     <div class="game-stage">
       <div class="game-hud"><span>Score: <b id="hudScore">0</b></span><span>Best: <b id="hudBest">0</b></span></div>
-      <div class="stage-wrap">
+      <div class="stage-wrap board-wrap">
         <div class="g2048" id="grid"></div>
         <div class="overlay-msg" id="overlay">
           <h2>🧩 2048</h2>
@@ -50,7 +55,7 @@ SGPGame.renderTopbar({ id: '2048', title: '2048', icon: '🧩' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores['2048']) || 0;
   hudBest.textContent = best();
 
-  let board, score, running = false;
+  let board, score, running = false, prevBoard = null;
 
   function emptyBoard() { return Array.from({ length: 4 }, () => [0, 0, 0, 0]); }
 
@@ -67,11 +72,13 @@ SGPGame.renderTopbar({ id: '2048', title: '2048', icon: '🧩' });
     for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
       const v = board[r][c];
       const t = document.createElement('div');
-      t.className = 'tile';
+      const isNew = v && (!prevBoard || prevBoard[r][c] !== v);
+      t.className = 'tile' + (isNew ? ' tile-new' : '');
       if (v) { t.dataset.v = v; t.textContent = v; }
       gridEl.appendChild(t);
     }
     hudScore.textContent = score;
+    prevBoard = board.map(row => row.slice());
   }
 
   function slideLine(line) {
@@ -138,7 +145,7 @@ SGPGame.renderTopbar({ id: '2048', title: '2048', icon: '🧩' });
   }
 
   function start() {
-    board = emptyBoard(); score = 0; running = true;
+    board = emptyBoard(); score = 0; running = true; prevBoard = null;
     addRandom(); addRandom();
     overlay.style.display = 'none';
     render();

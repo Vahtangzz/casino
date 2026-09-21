@@ -50,7 +50,7 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
     bird = { x: 70, y: H / 2, vy: 0 };
     pipes = [];
     score = 0;
-    gapH = 150;
+    gapH = 175;
     hudScore.textContent = 0;
     spawnPipe();
   }
@@ -63,25 +63,26 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
 
   function flap() {
     if (!running) return;
-    bird.vy = -6.3;
+    bird.vy = -5.8;
     SGPGame.beep(500, 0.05, 'square');
   }
 
   function update() {
-    bird.vy += 0.32;
+    bird.vy += 0.26;
     bird.y += bird.vy;
-    pipes.forEach(p => p.x -= 2.6);
-    if (pipes.length && pipes[pipes.length - 1].x < W - 190) spawnPipe();
+    pipes.forEach(p => p.x -= 2.15);
+    if (pipes.length && pipes[pipes.length - 1].x < W - 220) spawnPipe();
     if (pipes.length && pipes[0].x < -60) pipes.shift();
 
     pipes.forEach(p => {
       if (!p.passed && p.x + 30 < bird.x) { p.passed = true; score++; hudScore.textContent = score; SGPGame.beep(760, 0.05, 'sine'); }
     });
 
+    const hitR = 9; // slightly smaller than the drawn radius -- a forgiving hitbox
     const hitFloor = bird.y > H - 14 || bird.y < 0;
     const hitPipe = pipes.some(p => {
-      const withinX = bird.x + 12 > p.x && bird.x - 12 < p.x + 34;
-      const withinGap = bird.y - 12 > p.gapY && bird.y + 12 < p.gapY + gapH;
+      const withinX = bird.x + hitR > p.x && bird.x - hitR < p.x + 34;
+      const withinGap = bird.y - hitR > p.gapY && bird.y + hitR < p.gapY + gapH;
       return withinX && !withinGap;
     });
     if (hitFloor || hitPipe) return gameOver();

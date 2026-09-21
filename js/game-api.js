@@ -80,9 +80,20 @@ const SGPGame = (() => {
       const a = activeAccount();
       const favBtn = mount.querySelector('#gtFav');
       if (favBtn) favBtn.textContent = (a.favorites || []).includes(meta.id) ? '★ Favorited' : '☆ Favorite';
-      const c = mount.querySelector('#gtCoins'); if (c) c.textContent = '🪙 ' + SGPUI.fmt(a.coins);
-      const l = mount.querySelector('#gtLevel'); if (l) l.textContent = '⭐ Lv.' + a.level;
+      bumpText(mount.querySelector('#gtCoins'), '🪙 ' + SGPUI.fmt(a.coins));
+      bumpText(mount.querySelector('#gtLevel'), '⭐ Lv.' + a.level);
     };
+  }
+
+  function bumpText(el, newText) {
+    if (!el) return;
+    const changed = el.textContent !== newText;
+    el.textContent = newText;
+    if (changed && particleScale() > 0) {
+      el.classList.remove('stat-bump');
+      void el.offsetWidth;
+      el.classList.add('stat-bump');
+    }
   }
 
   function toggleFavorite(gameId) {

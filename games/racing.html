@@ -45,11 +45,21 @@ SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.racing) || 0;
   hudBest.textContent = best();
 
-  let lane, obstacles, speed, distance, spawnTimer, running, raf, stripeOffset;
+  let lane, obstacles, speed, distance, spawnTimer, running, raf, stripeOffset, lastT;
 
   function reset() {
-    lane = 1; obstacles = []; speed = 3.2; distance = 0; spawnTimer = 0; stripeOffset = 0;
+    lane = 1; obstacles = []; speed = 3.2; distance = 0; spawnTimer = 1.3; stripeOffset = 0; lastT = null;
     hudScore.textContent = 0;
+  }
+
+  // Never let obstacles seal off all lanes near the top -- always leave at least one path through.
+  function chooseLane() {
+    const blocked = new Set(obstacles.filter(o => o.y < 170).map(o => o.lane));
+    if (blocked.size >= LANES - 1) {
+      const open = [0, 1, 2].filter(l => !blocked.has(l));
+      if (open.length) return open[Math.floor(Math.random() * open.length)];
+    }
+    return Math.floor(Math.random() * LANES);
   }
 
   function laneX(l) { return l * LW + LW / 2; }
@@ -69,27 +79,30 @@ SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
     ctx.fillRect(laneX(lane) - 20, H - 60, 40, 36);
   }
 
-  function update() {
-    distance += speed * 0.12;
+  function update(dt) {
+    distance += speed * dt * 20;
     hudScore.textContent = Math.floor(distance);
-    speed = Math.min(9, 3.2 + distance / 400);
-    stripeOffset = (stripeOffset + speed) % 30;
+    speed = Math.min(9, 3.2 + distance / 500);
+    stripeOffset = (stripeOffset + speed * dt * 60) % 30;
 
-    spawnTimer -= speed;
+    spawnTimer -= dt;
     if (spawnTimer <= 0) {
-      spawnTimer = 46 - Math.min(26, speed * 3);
-      obstacles.push({ lane: Math.floor(Math.random() * LANES), y: -30, color: `hsl(${Math.random() * 360},65%,55%)` });
+      const difficulty = Math.min(1, distance / 700);
+      spawnTimer = 1.15 - difficulty * 0.6; // 1.15s early game down to a 0.55s floor
+      obstacles.push({ lane: chooseLane(), y: -30, color: `hsl(${Math.random() * 360},65%,55%)` });
     }
-    obstacles.forEach(o => o.y += speed);
+    obstacles.forEach(o => o.y += speed * dt * 60);
     obstacles = obstacles.filter(o => o.y < H + 40);
 
     const hit = obstacles.some(o => o.lane === lane && o.y > H - 78 && o.y < H - 24);
     if (hit) return gameOver();
   }
 
-  function loop() {
+  function loop(t) {
     if (!running) return;
-    update();
+    const dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0.016;
+    lastT = t;
+    update(dt);
     if (running) { draw(); raf = requestAnimationFrame(loop); }
   }
 

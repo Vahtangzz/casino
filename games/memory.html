@@ -6,12 +6,16 @@
 <title>Memory Match — School Games Portal</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
-  .mm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 380px; }
+  .mm-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 440px; }
   .mm-card { aspect-ratio: 1; border-radius: 10px; background: var(--bg-elev-2); border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; user-select: none; }
-  .mm-card.hidden { font-size: 0; }
-  .mm-card.hidden::after { content: '?'; font-size: 20px; color: var(--text-faint); }
+    display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1;
+    font-size: clamp(20px, 7vw, 30px); cursor: pointer; user-select: none; transition: background var(--dur-fast), transform var(--dur-fast); }
+  .mm-card.hidden { color: var(--text-faint); }
   .mm-card.matched { background: rgba(53,208,127,.15); border-color: var(--success); cursor: default; }
+  .mm-card.flipping { animation: mmFlip .25s ease; }
+  @keyframes mmFlip { from { transform: scaleX(0.2); } to { transform: scaleX(1); } }
+  html.perf-low .mm-card.flipping { animation: none; }
+  .stage-wrap.board-wrap { display: block; width: 100%; }
 </style>
 </head>
 <body>
@@ -21,7 +25,7 @@
     <div id="gameTopbar"></div>
     <div class="game-stage">
       <div class="game-hud"><span>Moves: <b id="hudMoves">0</b></span><span>Time: <b id="hudTime">0</b>s</span><span>Best: <b id="hudBest">0</b></span></div>
-      <div class="stage-wrap">
+      <div class="stage-wrap board-wrap">
         <div class="mm-grid" id="grid"></div>
         <div class="overlay-msg" id="overlay">
           <h2>🧠 Memory Match</h2>
@@ -55,7 +59,14 @@ SGPGame.renderTopbar({ id: 'memory', title: 'Memory Match', icon: '🧠' });
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
   function render() {
-    grid.innerHTML = cards.map((c, i) => `<div class="mm-card ${c.matched ? 'matched' : (c.revealed ? '' : 'hidden')}" data-i="${i}">${c.matched || c.revealed ? c.sym : ''}</div>`).join('');
+    grid.innerHTML = cards.map((c, i) => {
+      const shown = c.matched || c.revealed;
+      const cls = ['mm-card'];
+      if (c.matched) cls.push('matched');
+      else if (!c.revealed) cls.push('hidden');
+      else cls.push('flipping');
+      return `<div class="${cls.join(' ')}" data-i="${i}">${shown ? c.sym : '❓'}</div>`;
+    }).join('');
     grid.querySelectorAll('.mm-card').forEach(el => el.addEventListener('click', () => flip(+el.dataset.i)));
   }
 
