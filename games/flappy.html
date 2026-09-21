@@ -44,24 +44,32 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
   const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.flappy) || 0;
   hudBest.textContent = best();
 
-  let bird, pipes, score, running = false, raf, gapH, lastT;
-  const GRAVITY = 620;       // px/s^2 -- floaty, not a brick
-  const FLAP_VELOCITY = -300; // px/s
-  const PIPE_SPEED = 118;    // px/s
+  let bird, pipes, score, running = false, raf, lastT;
+  const GRAVITY = 460;       // px/s^2 -- casual, forgiving
+  const FLAP_VELOCITY = -245; // px/s
+  const PIPE_SPEED = 90;     // px/s
+  const BASE_GAP = 215;
 
   function reset() {
     bird = { x: 70, y: H / 2, vy: 0 };
     pipes = [];
     score = 0;
-    gapH = 175;
     hudScore.textContent = 0;
     spawnPipe();
   }
 
+  // The first several pipes get a much wider gap that tapers down to the
+  // normal difficulty, so a new player isn't thrown straight into the hard mode.
+  function gapForPipeIndex(n) {
+    const easyBonus = Math.max(0, 6 - n) * 12;
+    return BASE_GAP + easyBonus;
+  }
+
   function spawnPipe() {
-    const margin = 50;
-    const gapY = margin + Math.random() * (H - margin * 2 - gapH);
-    pipes.push({ x: W + 20, gapY, passed: false });
+    const margin = 45;
+    const thisGap = gapForPipeIndex(pipes.length);
+    const gapY = margin + Math.random() * (H - margin * 2 - thisGap);
+    pipes.push({ x: W + 20, gapY, gapH: thisGap, passed: false });
   }
 
   function flap() {
@@ -81,11 +89,11 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
       if (!p.passed && p.x + 30 < bird.x) { p.passed = true; score++; hudScore.textContent = score; SGPGame.beep(760, 0.05, 'sine'); }
     });
 
-    const hitR = 9; // slightly smaller than the drawn radius -- a forgiving hitbox
+    const hitR = 7; // noticeably smaller than the drawn radius -- a forgiving hitbox
     const hitFloor = bird.y > H - 14 || bird.y < 0;
     const hitPipe = pipes.some(p => {
       const withinX = bird.x + hitR > p.x && bird.x - hitR < p.x + 34;
-      const withinGap = bird.y - hitR > p.gapY && bird.y + hitR < p.gapY + gapH;
+      const withinGap = bird.y - hitR > p.gapY && bird.y + hitR < p.gapY + p.gapH;
       return withinX && !withinGap;
     });
     if (hitFloor || hitPipe) return gameOver();
@@ -107,7 +115,7 @@ SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
 
   function draw() {
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-    pipes.forEach(p => drawPipe(p.x, p.gapY, H - (p.gapY + gapH)));
+    pipes.forEach(p => drawPipe(p.x, p.gapY, H - (p.gapY + p.gapH)));
 
     ctx.save();
     ctx.translate(bird.x, bird.y);
