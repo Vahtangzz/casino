@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Memory Match — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .mm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 380px; }
+  .mm-card { aspect-ratio: 1; border-radius: 10px; background: var(--bg-elev-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; user-select: none; }
+  .mm-card.hidden { font-size: 0; }
+  .mm-card.hidden::after { content: '?'; font-size: 20px; color: var(--text-faint); }
+  .mm-card.matched { background: rgba(53,208,127,.15); border-color: var(--success); cursor: default; }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Moves: <b id="hudMoves">0</b></span><span>Time: <b id="hudTime">0</b>s</span><span>Best: <b id="hudBest">0</b></span></div>
+      <div class="stage-wrap">
+        <div class="mm-grid" id="grid"></div>
+        <div class="overlay-msg" id="overlay">
+          <h2>🧠 Memory Match</h2>
+          <p class="muted">Find all 8 matching pairs in as few moves as possible.</p>
+          <button class="btn primary" id="startBtn">Start</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'memory', title: 'Memory Match', icon: '🧠' });
+
+(() => {
+  const grid = document.getElementById('grid'), overlay = document.getElementById('overlay');
+  const hudMoves = document.getElementById('hudMoves'), hudTime = document.getElementById('hudTime'), hudBest = document.getElementById('hudBest');
+  const SYMBOLS = ['🐶','🐱','🦊','🐼','🐸','🦄','🐯','🐵'];
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.memory) || 0;
+  hudBest.textContent = best();
+
+  let cards, flipped, matchedCount, moves, startTime, timerId, locked;
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function render() {
+    grid.innerHTML = cards.map((c, i) => `<div class="mm-card ${c.matched ? 'matched' : (c.revealed ? '' : 'hidden')}" data-i="${i}">${c.matched || c.revealed ? c.sym : ''}</div>`).join('');
+    grid.querySelectorAll('.mm-card').forEach(el => el.addEventListener('click', () => flip(+el.dataset.i)));
+  }
+
+  function flip(i) {
+    if (locked || cards[i].revealed || cards[i].matched) return;
+    if (!timerId) timerId = setInterval(() => { hudTime.textContent = Math.floor((Date.now() - startTime) / 1000); }, 1000);
+    cards[i].revealed = true;
+    flipped.push(i);
+    render();
+    if (flipped.length === 2) {
+      moves++; hudMoves.textContent = moves;
+      locked = true;
+      const [a, b] = flipped;
+      if (cards[a].sym === cards[b].sym) {
+        cards[a].matched = true; cards[b].matched = true;
+        matchedCount++;
+        SGPGame.beep(700, 0.05, 'sine');
+        flipped = []; locked = false;
+        render();
+        if (matchedCount === SYMBOLS.length) gameOver();
+      } else {
+        setTimeout(() => {
+          cards[a].revealed = false; cards[b].revealed = false;
+          flipped = []; locked = false;
+          render();
+        }, 700);
+      }
+    }
+  }
+
+  function gameOver() {
+    clearInterval(timerId);
+    const seconds = Math.floor((Date.now() - startTime) / 1000);
+    const score = Math.max(50, 1200 - moves * 20 - seconds * 4);
+    const coins = Math.round(score / 4), xp = Math.round(score / 3);
+    SGPGame.reportResult('memory', { score, won: true, coinsDelta: coins, xpDelta: xp });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>Solved! 🎉</h2><p class="muted">${moves} moves &middot; ${seconds}s &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex';
+    wireStart();
+  }
+
+  function start() {
+    const deck = shuffle([...SYMBOLS, ...SYMBOLS].map(sym => ({ sym, revealed: false, matched: false })));
+    cards = deck; flipped = []; matchedCount = 0; moves = 0; locked = false;
+    startTime = Date.now(); clearInterval(timerId); timerId = null;
+    hudMoves.textContent = 0; hudTime.textContent = 0;
+    overlay.style.display = 'none';
+    render();
+  }
+
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+})();
+</script>
+</body>
+</html>

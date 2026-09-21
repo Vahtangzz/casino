@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flap Dash — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Score: <b id="hudScore">0</b></span><span>Best: <b id="hudBest">0</b></span></div>
+      <div class="stage-wrap">
+        <canvas id="cv" width="360" height="480" aria-label="Flap Dash game board"></canvas>
+        <div class="overlay-msg" id="overlay">
+          <h2>🐤 Flap Dash</h2>
+          <p class="muted">Tap, click or press Space to flap through the gaps.</p>
+          <button class="btn primary" id="startBtn">Start Game</button>
+        </div>
+      </div>
+      <div class="game-controls-hint">Space / Click / Tap to flap.</div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'flappy', title: 'Flap Dash', icon: '🐤' });
+
+(() => {
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const overlay = document.getElementById('overlay');
+  const hudScore = document.getElementById('hudScore'), hudBest = document.getElementById('hudBest');
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.flappy) || 0;
+  hudBest.textContent = best();
+
+  let bird, pipes, score, running = false, raf, gapH;
+
+  function reset() {
+    bird = { x: 70, y: H / 2, vy: 0 };
+    pipes = [];
+    score = 0;
+    gapH = 150;
+    hudScore.textContent = 0;
+    spawnPipe();
+  }
+
+  function spawnPipe() {
+    const margin = 50;
+    const gapY = margin + Math.random() * (H - margin * 2 - gapH);
+    pipes.push({ x: W + 20, gapY, passed: false });
+  }
+
+  function flap() {
+    if (!running) return;
+    bird.vy = -6.3;
+    SGPGame.beep(500, 0.05, 'square');
+  }
+
+  function update() {
+    bird.vy += 0.32;
+    bird.y += bird.vy;
+    pipes.forEach(p => p.x -= 2.6);
+    if (pipes.length && pipes[pipes.length - 1].x < W - 190) spawnPipe();
+    if (pipes.length && pipes[0].x < -60) pipes.shift();
+
+    pipes.forEach(p => {
+      if (!p.passed && p.x + 30 < bird.x) { p.passed = true; score++; hudScore.textContent = score; SGPGame.beep(760, 0.05, 'sine'); }
+    });
+
+    const hitFloor = bird.y > H - 14 || bird.y < 0;
+    const hitPipe = pipes.some(p => {
+      const withinX = bird.x + 12 > p.x && bird.x - 12 < p.x + 34;
+      const withinGap = bird.y - 12 > p.gapY && bird.y + 12 < p.gapY + gapH;
+      return withinX && !withinGap;
+    });
+    if (hitFloor || hitPipe) return gameOver();
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#1d2740';
+    pipes.forEach(p => {
+      ctx.fillRect(p.x, 0, 34, p.gapY);
+      ctx.fillRect(p.x, p.gapY + gapH, 34, H - (p.gapY + gapH));
+    });
+    ctx.fillStyle = '#5b8cff';
+    ctx.beginPath(); ctx.arc(bird.x, bird.y, 12, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function loop() {
+    if (!running) return;
+    update();
+    if (running) { draw(); raf = requestAnimationFrame(loop); }
+  }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(raf);
+    SGPGame.beep(120, 0.25, 'sawtooth');
+    const coins = score * 4, xp = score * 6;
+    SGPGame.reportResult('flappy', { score, coinsDelta: coins, xpDelta: xp });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>Game Over</h2><p class="muted">Score: ${score} &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex';
+    wireStart();
+  }
+
+  function start() {
+    reset(); draw();
+    overlay.style.display = 'none';
+    running = true;
+    raf = requestAnimationFrame(loop);
+  }
+
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+
+  document.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); flap(); } });
+  cv.addEventListener('pointerdown', flap);
+})();
+</script>
+</body>
+</html>

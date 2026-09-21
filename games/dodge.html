@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dodge Storm — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Time: <b id="hudScore">0.0</b>s</span><span>Best: <b id="hudBest">0.0</b>s</span></div>
+      <div class="stage-wrap">
+        <canvas id="cv" width="360" height="440" aria-label="Dodge Storm board"></canvas>
+        <div class="overlay-msg" id="overlay">
+          <h2>☄️ Dodge Storm</h2>
+          <p class="muted">Move freely and survive the falling storm. Gets faster the longer you last.</p>
+          <button class="btn primary" id="startBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-controls-hint">Arrow keys / WASD to move.</div>
+      <div class="touch-pad" id="dpad"></div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'dodge', title: 'Dodge Storm', icon: '☄️' });
+
+(() => {
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const overlay = document.getElementById('overlay');
+  const hudScore = document.getElementById('hudScore'), hudBest = document.getElementById('hudBest');
+  const best = () => {
+    const ms = SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.dodge;
+    return ms ? (ms / 10).toFixed(1) : '0.0';
+  };
+  hudBest.textContent = best();
+
+  let player, rocks, keys, running, raf, startTime, spawnTimer, elapsed;
+
+  function reset() {
+    player = { x: W / 2, y: H - 50, r: 10 };
+    rocks = []; elapsed = 0; spawnTimer = 0;
+    keys = { up: false, down: false, left: false, right: false };
+    hudScore.textContent = '0.0';
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, W, H);
+    rocks.forEach(r => {
+      ctx.fillStyle = '#ff5d6c';
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = '#35d0ba';
+    ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function update(dt) {
+    elapsed += dt;
+    hudScore.textContent = elapsed.toFixed(1);
+    const speed = 220;
+    if (keys.up) player.y -= speed * dt;
+    if (keys.down) player.y += speed * dt;
+    if (keys.left) player.x -= speed * dt;
+    if (keys.right) player.x += speed * dt;
+    player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+    player.y = Math.max(player.r, Math.min(H - player.r, player.y));
+
+    const difficulty = Math.min(1, elapsed / 40);
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnTimer = 0.55 - difficulty * 0.38;
+      const r = 8 + Math.random() * 14;
+      rocks.push({ x: Math.random() * W, y: -r, r, vy: 90 + Math.random() * 120 + difficulty * 160 });
+    }
+    rocks.forEach(r => r.y += r.vy * dt);
+    rocks = rocks.filter(r => r.y - r.r < H);
+
+    const hit = rocks.some(r => {
+      const dx = r.x - player.x, dy = r.y - player.y;
+      return Math.sqrt(dx * dx + dy * dy) < r.r + player.r;
+    });
+    if (hit) return gameOver();
+  }
+
+  let lastT;
+  function loop(t) {
+    if (!running) return;
+    const dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0.016;
+    lastT = t;
+    update(dt);
+    if (running) { draw(); raf = requestAnimationFrame(loop); }
+  }
+
+  function gameOver() {
+    running = false; cancelAnimationFrame(raf);
+    SGPGame.beep(120, 0.25, 'sawtooth');
+    const scoreTenths = Math.round(elapsed * 10);
+    const coins = Math.round(elapsed * 4), xp = Math.round(elapsed * 5);
+    SGPGame.reportResult('dodge', { score: scoreTenths, coinsDelta: coins, xpDelta: xp });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>Wiped Out!</h2><p class="muted">Survived ${elapsed.toFixed(1)}s &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex'; wireStart();
+  }
+
+  function start() { reset(); draw(); overlay.style.display = 'none'; running = true; lastT = null; raf = requestAnimationFrame(loop); }
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') keys.up = true;
+    else if (k === 'arrowdown' || k === 's') keys.down = true;
+    else if (k === 'arrowleft' || k === 'a') keys.left = true;
+    else if (k === 'arrowright' || k === 'd') keys.right = true;
+  });
+  document.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') keys.up = false;
+    else if (k === 'arrowdown' || k === 's') keys.down = false;
+    else if (k === 'arrowleft' || k === 'a') keys.left = false;
+    else if (k === 'arrowright' || k === 'd') keys.right = false;
+  });
+
+  const dpadEl = document.getElementById('dpad');
+  dpadEl.classList.add('touch-pad');
+  const dirs = [['', ''], ['up', '▲'], ['', ''], ['left', '◀'], ['', ''], ['right', '▶'], ['', ''], ['down', '▼'], ['', '']];
+  dirs.forEach(([dir, label]) => {
+    const b = document.createElement('button');
+    if (!dir) { b.style.visibility = 'hidden'; dpadEl.appendChild(b); return; }
+    b.textContent = label;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); keys[dir] = true; });
+    b.addEventListener('pointerup', () => keys[dir] = false);
+    b.addEventListener('pointerleave', () => keys[dir] = false);
+    dpadEl.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

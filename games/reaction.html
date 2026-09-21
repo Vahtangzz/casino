@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reaction Test — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Round: <b id="hudRound">0</b>/5</span><span>Best: <b id="hudBest">–</b> ms</span></div>
+      <div id="box" style="width:100%;max-width:400px;height:260px;border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;background:var(--bg-elev-2);font-weight:800;font-size:18px;padding:16px;user-select:none">
+        Click Start to begin
+      </div>
+      <button class="btn primary" id="startBtn">Start Test</button>
+      <div class="game-controls-hint">Click/tap the box the instant it turns green. Clicking too early resets the round.</div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'reaction', title: 'Reaction Test', icon: '⏱️' });
+
+(() => {
+  const box = document.getElementById('box'), startBtn = document.getElementById('startBtn');
+  const hudRound = document.getElementById('hudRound'), hudBest = document.getElementById('hudBest');
+  const ROUNDS = 5;
+  let round = 0, results = [], state = 'idle', timeoutId, tStart;
+
+  const prevBest = () => {
+    const s = SGPGame.activeAccount().stats;
+    return s && s.reaction && s.reaction.customBest;
+  };
+  hudBest.textContent = prevBest() || '–';
+
+  function setBox(bg, text) { box.style.background = bg; box.textContent = text; }
+
+  function nextRound() {
+    if (round >= ROUNDS) return finish();
+    round++;
+    hudRound.textContent = round;
+    state = 'waiting';
+    setBox('var(--bg-elev-2)', 'Wait for green...');
+    const delay = 900 + Math.random() * 2200;
+    timeoutId = setTimeout(() => {
+      state = 'go';
+      tStart = performance.now();
+      setBox('var(--success)', 'CLICK NOW!');
+    }, delay);
+  }
+
+  function handleClick() {
+    if (state === 'idle') return;
+    if (state === 'waiting') {
+      clearTimeout(timeoutId);
+      state = 'idle';
+      setBox('var(--danger)', 'Too soon! Click Start to try again.');
+      round = 0; results = []; hudRound.textContent = 0;
+      startBtn.style.display = 'inline-flex';
+      return;
+    }
+    if (state === 'go') {
+      const ms = Math.round(performance.now() - tStart);
+      results.push(ms);
+      SGPGame.beep(700, 0.05, 'sine');
+      setBox('var(--bg-elev-2)', ms + ' ms — nice!');
+      state = 'idle';
+      setTimeout(nextRound, 550);
+    }
+  }
+
+  function finish() {
+    const avg = Math.round(results.reduce((a, b) => a + b, 0) / results.length);
+    const best = Math.min(...results);
+    setBox('var(--bg-elev-2)', `Done! Avg ${avg}ms, Best ${best}ms`);
+    SGPGame.reportResult('reaction', { coinsDelta: Math.max(10, 200 - avg), xpDelta: 20, extraStats: { customBest: best, avg } });
+    hudBest.textContent = prevBest();
+    startBtn.textContent = 'Try Again';
+    startBtn.style.display = 'inline-flex';
+  }
+
+  startBtn.addEventListener('click', () => {
+    round = 0; results = [];
+    startBtn.style.display = 'none';
+    nextRound();
+  });
+  box.addEventListener('pointerdown', handleClick);
+  document.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); handleClick(); } });
+})();
+</script>
+</body>
+</html>

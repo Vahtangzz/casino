@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lane Racer — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Distance: <b id="hudScore">0</b>m</span><span>Best: <b id="hudBest">0</b>m</span></div>
+      <div class="stage-wrap">
+        <canvas id="cv" width="300" height="440" aria-label="Lane racer board"></canvas>
+        <div class="overlay-msg" id="overlay">
+          <h2>🏎️ Lane Racer</h2>
+          <p class="muted">Switch lanes to dodge oncoming traffic. Survive as far as you can.</p>
+          <button class="btn primary" id="startBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-controls-hint">Left/Right arrows or A/D to switch lanes.</div>
+      <div class="touch-pad" id="dpad" style="grid-template-columns:repeat(2,64px);grid-template-rows:52px"></div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'racing', title: 'Lane Racer', icon: '🏎️' });
+
+(() => {
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, LANES = 3, LW = W / LANES;
+  const overlay = document.getElementById('overlay');
+  const hudScore = document.getElementById('hudScore'), hudBest = document.getElementById('hudBest');
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.racing) || 0;
+  hudBest.textContent = best();
+
+  let lane, obstacles, speed, distance, spawnTimer, running, raf, stripeOffset;
+
+  function reset() {
+    lane = 1; obstacles = []; speed = 3.2; distance = 0; spawnTimer = 0; stripeOffset = 0;
+    hudScore.textContent = 0;
+  }
+
+  function laneX(l) { return l * LW + LW / 2; }
+
+  function draw() {
+    ctx.fillStyle = '#1a1f2e'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#2a3555'; ctx.lineWidth = 2; ctx.setLineDash([16, 14]);
+    for (let i = 1; i < LANES; i++) {
+      ctx.beginPath(); ctx.moveTo(i * LW, stripeOffset - 30); ctx.lineTo(i * LW, H); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    obstacles.forEach(o => {
+      ctx.fillStyle = o.color;
+      ctx.fillRect(laneX(o.lane) - 22, o.y - 18, 44, 36);
+    });
+    ctx.fillStyle = '#5b8cff';
+    ctx.fillRect(laneX(lane) - 20, H - 60, 40, 36);
+  }
+
+  function update() {
+    distance += speed * 0.12;
+    hudScore.textContent = Math.floor(distance);
+    speed = Math.min(9, 3.2 + distance / 400);
+    stripeOffset = (stripeOffset + speed) % 30;
+
+    spawnTimer -= speed;
+    if (spawnTimer <= 0) {
+      spawnTimer = 46 - Math.min(26, speed * 3);
+      obstacles.push({ lane: Math.floor(Math.random() * LANES), y: -30, color: `hsl(${Math.random() * 360},65%,55%)` });
+    }
+    obstacles.forEach(o => o.y += speed);
+    obstacles = obstacles.filter(o => o.y < H + 40);
+
+    const hit = obstacles.some(o => o.lane === lane && o.y > H - 78 && o.y < H - 24);
+    if (hit) return gameOver();
+  }
+
+  function loop() {
+    if (!running) return;
+    update();
+    if (running) { draw(); raf = requestAnimationFrame(loop); }
+  }
+
+  function gameOver() {
+    running = false; cancelAnimationFrame(raf);
+    SGPGame.beep(120, 0.25, 'sawtooth');
+    const score = Math.floor(distance);
+    const coins = Math.round(score / 3), xp = Math.round(score / 2);
+    SGPGame.reportResult('racing', { score, coinsDelta: coins, xpDelta: xp });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>Crashed!</h2><p class="muted">${score}m &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex'; wireStart();
+  }
+
+  function start() { reset(); draw(); overlay.style.display = 'none'; running = true; raf = requestAnimationFrame(loop); }
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+
+  function moveLeft() { if (running) lane = Math.max(0, lane - 1); }
+  function moveRight() { if (running) lane = Math.min(LANES - 1, lane + 1); }
+
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a') moveLeft();
+    else if (k === 'arrowright' || k === 'd') moveRight();
+  });
+
+  const dpad = document.getElementById('dpad');
+  const l = document.createElement('button'); l.textContent = '◀'; l.addEventListener('pointerdown', moveLeft);
+  const r = document.createElement('button'); r.textContent = '▶'; r.addEventListener('pointerdown', moveRight);
+  dpad.append(l, r);
+})();
+</script>
+</body>
+</html>

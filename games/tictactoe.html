@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tic-Tac-Toe — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 300px; }
+  .ttt-cell { aspect-ratio: 1; border-radius: 10px; background: var(--bg-elev-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; cursor: pointer; }
+  .ttt-cell.x { color: var(--accent); } .ttt-cell.o { color: var(--accent-2); }
+  .ttt-cell.win { background: rgba(245,185,66,.2); border-color: var(--gold); }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>X wins: <b id="hudX">0</b></span><span>O wins: <b id="hudO">0</b></span><span>Draws: <b id="hudD">0</b></span></div>
+      <div class="stage-wrap">
+        <div class="ttt-grid" id="grid"></div>
+        <div class="overlay-msg" id="overlay" style="display:none">
+          <h2 id="overText"></h2>
+          <button class="btn primary" id="nextBtn">Next Round</button>
+        </div>
+      </div>
+      <p class="game-controls-hint" id="turnHint">Two players, one device. X goes first.</p>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'tictactoe', title: 'Tic-Tac-Toe', icon: '❌' });
+
+(() => {
+  const gridEl = document.getElementById('grid'), overlay = document.getElementById('overlay'), overText = document.getElementById('overText'), hint = document.getElementById('turnHint');
+  const hudX = document.getElementById('hudX'), hudO = document.getElementById('hudO'), hudD = document.getElementById('hudD');
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  let board, turn, wins = { X: 0, O: 0, D: 0 }, active;
+
+  function render(winLine) {
+    gridEl.innerHTML = board.map((v, i) => `<div class="ttt-cell ${v ? v.toLowerCase() : ''} ${winLine && winLine.includes(i) ? 'win' : ''}" data-i="${i}">${v || ''}</div>`).join('');
+    gridEl.querySelectorAll('.ttt-cell').forEach(el => el.addEventListener('click', () => play(+el.dataset.i)));
+    hint.textContent = active ? `Player ${turn}'s turn` : '';
+  }
+
+  function checkWinner() {
+    for (const line of LINES) {
+      const [a, b, c] = line;
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) return { winner: board[a], line };
+    }
+    if (board.every(v => v)) return { winner: 'draw' };
+    return null;
+  }
+
+  function play(i) {
+    if (!active || board[i]) return;
+    board[i] = turn;
+    SGPGame.beep(turn === 'X' ? 500 : 620, 0.05, 'square');
+    const result = checkWinner();
+    if (result) {
+      active = false;
+      if (result.winner === 'draw') { wins.D++; hudD.textContent = wins.D; overText.textContent = "It's a draw!"; }
+      else {
+        wins[result.winner]++;
+        (result.winner === 'X' ? hudX : hudO).textContent = wins[result.winner];
+        overText.textContent = `Player ${result.winner} wins!`;
+        SGPGame.beep(820, 0.15, 'sine');
+      }
+      SGPGame.reportResult('tictactoe', { won: result.winner !== 'draw', coinsDelta: 8, xpDelta: 10 });
+      render(result.line);
+      overlay.style.display = 'flex';
+    } else {
+      turn = turn === 'X' ? 'O' : 'X';
+      render();
+    }
+  }
+
+  function nextRound() {
+    board = Array(9).fill(null);
+    turn = 'X'; active = true;
+    overlay.style.display = 'none';
+    render();
+  }
+  document.getElementById('nextBtn').addEventListener('click', nextRound);
+  nextRound();
+})();
+</script>
+</body>
+</html>

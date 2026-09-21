@@ -1,157 +1,50 @@
 <!DOCTYPE html>
-<html lang="lv">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Velvet Casino</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>School Games Portal — Play Free Browser Games</title>
+<meta name="description" content="A lightweight browser game portal: 16 free games playable instantly, with local accounts, XP, coins and achievements. No installs, no server needed.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="logo">♠</div>
-        <div>
-          <h1>VELVET <span>CASINO</span></h1>
-          <small>PLAY MONEY ONLY</small>
-        </div>
-      </div>
-      <div class="balance-box">
-        <span>VIRTUAL BALANCE</span>
-        <strong id="balance">10,000</strong>
-        <button id="resetBtn" class="tiny-btn">RESET</button>
-      </div>
-    </header>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="app-header"></div>
 
-    <div class="layout">
-      <aside class="sidebar">
-        <button class="nav-btn active" data-game="slots"><span>🎰</span> Slots</button>
-        <button class="nav-btn" data-game="blackjack"><span>🃏</span> Blackjack</button>
-        <button class="nav-btn" data-game="roulette"><span>🎡</span> Roulette</button>
-        <button class="nav-btn" data-game="coinflip"><span>🪙</span> Coin Flip</button>
+<main id="main">
+  <div class="container">
+    <section class="hero">
+      <h1>Play instantly. No installs, no sign-up required.</h1>
+      <p class="muted">16 lightweight games that run entirely in your browser. Create a free local account to track XP, coins, achievements and high scores.</p>
+    </section>
 
-        <div class="stats">
-          <h3>SESSION</h3>
-          <div><span>Games</span><b id="games">0</b></div>
-          <div><span>Wins</span><b id="wins">0</b></div>
-          <div><span>Losses</span><b id="losses">0</b></div>
-          <div><span>Profit</span><b id="profit">0</b></div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <section id="slots" class="game active-game">
-          <div class="game-head">
-            <div>
-              <p class="eyebrow">CLASSIC REELS</p>
-              <h2>🎰 Lucky Velvet</h2>
-              <p>Match symbols across the center line.</p>
-            </div>
-            <div class="jackpot">JACKPOT <strong>25,000</strong></div>
-          </div>
-
-          <div class="machine">
-            <div class="reels">
-              <div class="reel" id="reel1">🍒</div>
-              <div class="reel" id="reel2">7️⃣</div>
-              <div class="reel" id="reel3">💎</div>
-            </div>
-            <div id="slotResult" class="result">Place your bet and spin.</div>
-          </div>
-
-          <div class="controls">
-            <label>BET <input id="slotBet" type="number" min="10" max="1000" step="10" value="100"></label>
-            <button id="spinBtn" class="primary">SPIN 🎰</button>
-          </div>
-          <div class="paytable">
-            <span>3x 7️⃣ = <b>25x</b></span>
-            <span>3x 💎 = <b>15x</b></span>
-            <span>3x 🍒 = <b>8x</b></span>
-            <span>2 matching = <b>2x</b></span>
-          </div>
-        </section>
-
-        <section id="blackjack" class="game">
-          <div class="game-head">
-            <div>
-              <p class="eyebrow">21 TABLE</p>
-              <h2>🃏 Blackjack</h2>
-              <p>Beat the dealer without going over 21.</p>
-            </div>
-          </div>
-
-          <div class="cards-area">
-            <div class="hand-block">
-              <h3>DEALER <span id="dealerScore">?</span></h3>
-              <div id="dealerCards" class="cards"></div>
-            </div>
-            <div class="hand-block">
-              <h3>YOU <span id="playerScore">0</span></h3>
-              <div id="playerCards" class="cards"></div>
-            </div>
-          </div>
-          <div id="blackjackResult" class="result">Start a new hand.</div>
-          <div class="controls">
-            <label>BET <input id="blackjackBet" type="number" min="10" max="1000" step="10" value="100"></label>
-            <button id="dealBtn" class="primary">DEAL</button>
-            <button id="hitBtn" class="secondary" disabled>HIT</button>
-            <button id="standBtn" class="secondary" disabled>STAND</button>
-          </div>
-        </section>
-
-        <section id="roulette" class="game">
-          <div class="game-head">
-            <div>
-              <p class="eyebrow">EUROPEAN WHEEL</p>
-              <h2>🎡 Roulette</h2>
-              <p>Choose a color or number, then spin.</p>
-            </div>
-          </div>
-          <div class="roulette-wheel">
-            <div id="rouletteNumber">?</div>
-            <small id="rouletteColor">MAKE YOUR BET</small>
-          </div>
-          <div class="roulette-options">
-            <button class="bet-choice red" data-choice="red">RED <b>2x</b></button>
-            <button class="bet-choice black" data-choice="black">BLACK <b>2x</b></button>
-            <button class="bet-choice green" data-choice="green">GREEN <b>14x</b></button>
-          </div>
-          <div class="number-grid" id="numberGrid"></div>
-          <div class="controls">
-            <label>BET <input id="rouletteBet" type="number" min="10" max="1000" step="10" value="100"></label>
-            <span id="rouletteChoice" class="choice-label">No choice selected</span>
-            <button id="rouletteSpin" class="primary">SPIN 🎡</button>
-          </div>
-          <div id="rouletteResult" class="result">Pick a color or number.</div>
-        </section>
-
-        <section id="coinflip" class="game">
-          <div class="game-head">
-            <div>
-              <p class="eyebrow">50 / 50</p>
-              <h2>🪙 Coin Flip</h2>
-              <p>Pick heads or tails.</p>
-            </div>
-          </div>
-          <div id="coin" class="coin">?</div>
-          <div class="coin-options">
-            <button class="coin-choice" data-choice="heads">HEADS</button>
-            <button class="coin-choice" data-choice="tails">TAILS</button>
-          </div>
-          <div class="controls">
-            <label>BET <input id="coinBet" type="number" min="10" max="1000" step="10" value="100"></label>
-            <span id="coinChoice" class="choice-label">No choice selected</span>
-            <button id="flipBtn" class="primary">FLIP 🪙</button>
-          </div>
-          <div id="coinResult" class="result">Choose a side.</div>
-        </section>
-      </main>
+    <div class="filter-bar">
+      <div class="search-wrap"><input type="search" id="searchInput" placeholder="Search games..."></div>
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="favorites">❤️ Favorites</button>
+      <button class="chip" data-filter="under1">Under 1 min</button>
+      <button class="chip" data-filter="under5">Under 5 min</button>
+      <button class="chip" data-filter="endless">Endless</button>
+      <button class="chip" data-filter="multiplayer">Multiplayer / Local</button>
+      <button class="chip" data-filter="highscore">High Score</button>
     </div>
 
-    <footer>
-      <strong>PLAY MONEY ONLY</strong> · No real-money gambling · Credits have no cash value
-    </footer>
+    <div class="section-title"><h2 id="gridTitle">All Games</h2><span class="faint" id="gridCount"></span></div>
+    <div class="game-grid" id="gameGrid"></div>
+    <p class="empty-msg" id="emptyMsg" style="display:none">No games match that filter yet — try another one.</p>
   </div>
-  <script src="script.js"></script>
+</main>
+
+<footer>
+  <p>School Games Portal — a static, browser-only game site. Accounts are stored locally on your device (see your <a href="profile.html">profile</a> for export/import). No downloads. No plugins.</p>
+</footer>
+
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/achievements.js"></script>
+<script src="js/games-data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/home.js"></script>
 </body>
 </html>
