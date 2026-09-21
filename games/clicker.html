@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coin Clicker — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .coin-btn { width: 140px; height: 140px; border-radius: 50%; border: none; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #ffe28a, #f5b942 60%, #b3781c); font-size: 52px;
+    box-shadow: 0 6px 0 #8a5c14, 0 10px 20px rgba(0,0,0,.4); transition: transform 60ms; }
+  .coin-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8a5c14, 0 6px 14px rgba(0,0,0,.4); }
+  .upg { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; width: 100%; max-width: 360px; }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>This session: <b id="hudSession">0</b></span><span>Best session: <b id="hudBest">0</b></span></div>
+      <button class="coin-btn" id="coinBtn" aria-label="Click for coins">🪙</button>
+      <div class="upg">
+        <div><b>Click Power</b><div class="faint" style="font-size:11px">+1 coin per click &middot; Lv. <span id="cpLevel">1</span></div></div>
+        <button class="btn gold" id="buyCp">Upgrade — <span id="cpCost">50</span>🪙</button>
+      </div>
+      <div class="upg">
+        <div><b>Auto Clicker</b><div class="faint" style="font-size:11px">+1 coin/sec &middot; Lv. <span id="acLevel">0</span></div></div>
+        <button class="btn gold" id="buyAc">Upgrade — <span id="acCost">150</span>🪙</button>
+      </div>
+      <button class="btn primary" id="cashOutBtn">Cash Out Session</button>
+      <div class="game-controls-hint">Click the coin (or press Space) to earn. Endless — cash out any time to bank XP.</div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'clicker', title: 'Coin Clicker', icon: '👆' });
+
+(() => {
+  const hudSession = document.getElementById('hudSession'), hudBest = document.getElementById('hudBest');
+  const cpLevel = document.getElementById('cpLevel'), acLevel = document.getElementById('acLevel');
+  const cpCost = document.getElementById('cpCost'), acCost = document.getElementById('acCost');
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.clicker) || 0;
+  hudBest.textContent = best();
+
+  function clickerStats() {
+    const s = SGPGame.activeAccount().stats;
+    return (s && s.clicker) || { clickPower: 1, autoLevel: 0 };
+  }
+  let sessionEarned = 0;
+
+  function refreshUpgradeUI() {
+    const cs = clickerStats();
+    cpLevel.textContent = cs.clickPower;
+    acLevel.textContent = cs.autoLevel;
+    cpCost.textContent = SGPUI.fmt(cpUpgradeCost(cs.clickPower));
+    acCost.textContent = SGPUI.fmt(acUpgradeCost(cs.autoLevel));
+  }
+  function cpUpgradeCost(level) { return Math.round(50 * Math.pow(1.6, level - 1)); }
+  function acUpgradeCost(level) { return Math.round(150 * Math.pow(1.7, level)); }
+
+  function earn(amount) {
+    sessionEarned += amount;
+    hudSession.textContent = SGPUI.fmt(sessionEarned);
+    SGPGame.adjustCoins(amount);
+  }
+
+  document.getElementById('coinBtn').addEventListener('click', () => {
+    earn(clickerStats().clickPower);
+    SGPGame.beep(850, 0.03, 'square', 0.03);
+  });
+  document.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); document.getElementById('coinBtn').click(); } });
+
+  document.getElementById('buyCp').addEventListener('click', () => {
+    const acc = SGPGame.activeAccount();
+    const cs = clickerStats();
+    const cost = cpUpgradeCost(cs.clickPower);
+    if (acc.coins < cost) { SGPUI.toast('Not enough coins'); return; }
+    SGPGame.adjustCoins(-cost);
+    SGPGame.mutateActive(a => { a.stats.clicker = Object.assign({ clickPower: 1, autoLevel: 0 }, a.stats.clicker, { clickPower: (a.stats.clicker && a.stats.clicker.clickPower || 1) + 1 }); });
+    refreshUpgradeUI();
+  });
+  document.getElementById('buyAc').addEventListener('click', () => {
+    const acc = SGPGame.activeAccount();
+    const cs = clickerStats();
+    const cost = acUpgradeCost(cs.autoLevel);
+    if (acc.coins < cost) { SGPUI.toast('Not enough coins'); return; }
+    SGPGame.adjustCoins(-cost);
+    SGPGame.mutateActive(a => { a.stats.clicker = Object.assign({ clickPower: 1, autoLevel: 0 }, a.stats.clicker, { autoLevel: (a.stats.clicker && a.stats.clicker.autoLevel || 0) + 1 }); });
+    refreshUpgradeUI();
+  });
+
+  document.getElementById('cashOutBtn').addEventListener('click', () => {
+    const xp = Math.round(sessionEarned / 3);
+    SGPGame.reportResult('clicker', { score: sessionEarned, coinsDelta: 0, xpDelta: xp });
+    hudBest.textContent = best();
+    sessionEarned = 0; hudSession.textContent = 0;
+    SGPUI.toast('Session cashed out — nice work!', 'success');
+  });
+
+  setInterval(() => {
+    const rate = clickerStats().autoLevel;
+    if (rate > 0) earn(rate);
+  }, 1000);
+
+  refreshUpgradeUI();
+})();
+</script>
+</body>
+</html>

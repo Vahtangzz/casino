@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aim Trainer — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Hits: <b id="hudScore">0</b></span><span>Time: <b id="hudTime">30</b>s</span><span>Best: <b id="hudBest">0</b></span></div>
+      <div class="stage-wrap">
+        <canvas id="cv" width="480" height="340" aria-label="Aim trainer board"></canvas>
+        <div class="overlay-msg" id="overlay">
+          <h2>🎯 Aim Trainer</h2>
+          <p class="muted">Click as many targets as you can in 30 seconds.</p>
+          <button class="btn primary" id="startBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-controls-hint">Click/tap the targets as fast as you can.</div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'aim', title: 'Aim Trainer', icon: '🎯' });
+
+(() => {
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const hudScore = document.getElementById('hudScore'), hudTime = document.getElementById('hudTime'), hudBest = document.getElementById('hudBest');
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.aim) || 0;
+  hudBest.textContent = best();
+
+  let target, hits, misses, timeLeft, running = false, countdownId;
+
+  function spawnTarget() {
+    const r = 22;
+    target = { x: r + Math.random() * (cv.width - r * 2), y: r + Math.random() * (cv.height - r * 2), r };
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0f1420'; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (!target) return;
+    const grad = ctx.createRadialGradient(target.x, target.y, 2, target.x, target.y, target.r);
+    grad.addColorStop(0, '#ff5d6c'); grad.addColorStop(1, '#b33a44');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(target.x, target.y, 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function handleClick(e) {
+    if (!running) return;
+    const rect = cv.getBoundingClientRect();
+    const scaleX = cv.width / rect.width, scaleY = cv.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX, y = (e.clientY - rect.top) * scaleY;
+    const dx = x - target.x, dy = y - target.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= target.r) {
+      hits++; hudScore.textContent = hits;
+      SGPGame.beep(720, 0.04, 'square');
+      spawnTarget(); draw();
+    } else {
+      misses++;
+    }
+  }
+
+  function tick() {
+    timeLeft--;
+    hudTime.textContent = timeLeft;
+    if (timeLeft <= 0) gameOver();
+  }
+
+  function gameOver() {
+    running = false;
+    clearInterval(countdownId);
+    const accuracy = hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0;
+    const coins = hits * 3, xp = hits * 4;
+    SGPGame.reportResult('aim', { score: hits, coinsDelta: coins, xpDelta: xp, extraStats: { accuracy } });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>Time's Up!</h2><p class="muted">${hits} hits &middot; ${accuracy}% accuracy &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex';
+    wireStart();
+  }
+
+  function start() {
+    hits = 0; misses = 0; timeLeft = 30;
+    hudScore.textContent = 0; hudTime.textContent = 30;
+    overlay.style.display = 'none';
+    running = true;
+    spawnTarget(); draw();
+    countdownId = setInterval(tick, 1000);
+  }
+
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+  cv.addEventListener('pointerdown', handleClick);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minesweeper — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .ms-grid { display: grid; gap: 3px; width: 100%; max-width: 380px; }
+  .ms-cell { aspect-ratio: 1; border-radius: 4px; background: var(--bg-elev-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; cursor: pointer; user-select: none; }
+  .ms-cell.open { background: var(--bg); cursor: default; }
+  .ms-cell.mine { background: var(--danger); }
+  .ms-cell.flag { color: var(--gold); }
+  .ms-cell[data-n="1"]{color:#5b8cff} .ms-cell[data-n="2"]{color:#35d07f} .ms-cell[data-n="3"]{color:#ff5d6c}
+  .ms-cell[data-n="4"]{color:#a35cf0} .ms-cell[data-n="5"]{color:#f5b942}
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>💣 Left: <b id="hudMines">10</b></span><span>Time: <b id="hudTime">0</b>s</span><span>Best: <b id="hudBest">0</b></span></div>
+      <div class="stage-wrap">
+        <div class="ms-grid" id="grid" style="grid-template-columns:repeat(9,1fr)"></div>
+        <div class="overlay-msg" id="overlay">
+          <h2>💣 Minesweeper</h2>
+          <p class="muted">Left click / tap to reveal. Right click / long-press to flag. Clear the board without hitting a mine.</p>
+          <button class="btn primary" id="startBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-controls-hint">Left-click reveal &middot; Right-click or long-press to flag.</div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'minesweeper', title: 'Minesweeper', icon: '💣' });
+
+(() => {
+  const SIZE = 9, MINES = 10;
+  const gridEl = document.getElementById('grid'), overlay = document.getElementById('overlay');
+  const hudMines = document.getElementById('hudMines'), hudTime = document.getElementById('hudTime'), hudBest = document.getElementById('hudBest');
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores.minesweeper) || 0;
+  hudBest.textContent = best();
+
+  let cells, running = false, firstClick, flagsLeft, startTime, timerId, revealedCount;
+
+  function idx(r, c) { return r * SIZE + c; }
+  function neighbors(r, c) {
+    const out = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) out.push([nr, nc]);
+    }
+    return out;
+  }
+
+  function buildBoard(avoidIdx) {
+    cells = Array.from({ length: SIZE * SIZE }, () => ({ mine: false, open: false, flag: false, n: 0 }));
+    let placed = 0;
+    while (placed < MINES) {
+      const i = Math.floor(Math.random() * cells.length);
+      if (i === avoidIdx || cells[i].mine) continue;
+      cells[i].mine = true; placed++;
+    }
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      if (cells[idx(r, c)].mine) continue;
+      cells[idx(r, c)].n = neighbors(r, c).filter(([nr, nc]) => cells[idx(nr, nc)].mine).length;
+    }
+  }
+
+  function render() {
+    gridEl.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      const cell = cells[idx(r, c)];
+      const el = document.createElement('div');
+      el.className = 'ms-cell' + (cell.open ? ' open' : '') + (cell.flag ? ' flag' : '') + (cell.open && cell.mine ? ' mine' : '');
+      if (cell.open && cell.n > 0 && !cell.mine) { el.dataset.n = cell.n; el.textContent = cell.n; }
+      if (cell.open && cell.mine) el.textContent = '💣';
+      if (cell.flag && !cell.open) el.textContent = '🚩';
+      el.addEventListener('click', () => reveal(r, c));
+      el.addEventListener('contextmenu', e => { e.preventDefault(); toggleFlag(r, c); });
+      let pressTimer;
+      el.addEventListener('touchstart', () => { pressTimer = setTimeout(() => toggleFlag(r, c), 420); }, { passive: true });
+      el.addEventListener('touchend', () => clearTimeout(pressTimer));
+      gridEl.appendChild(el);
+    }
+    hudMines.textContent = flagsLeft;
+  }
+
+  function toggleFlag(r, c) {
+    if (!running) return;
+    const cell = cells[idx(r, c)];
+    if (cell.open) return;
+    cell.flag = !cell.flag;
+    flagsLeft += cell.flag ? -1 : 1;
+    render();
+  }
+
+  function reveal(r, c) {
+    if (!running) return;
+    const cell = cells[idx(r, c)];
+    if (cell.flag || cell.open) return;
+    if (firstClick) { buildBoard(idx(r, c)); firstClick = false; startTimer(); }
+    floodOpen(r, c);
+    render();
+    if (cell.mine) return lose();
+    checkWin();
+  }
+
+  function floodOpen(r, c) {
+    const cell = cells[idx(r, c)];
+    if (cell.open || cell.flag) return;
+    cell.open = true; revealedCount++;
+    if (cell.mine) return;
+    if (cell.n === 0) neighbors(r, c).forEach(([nr, nc]) => floodOpen(nr, nc));
+  }
+
+  function startTimer() {
+    startTime = Date.now();
+    timerId = setInterval(() => { hudTime.textContent = Math.floor((Date.now() - startTime) / 1000); }, 1000);
+  }
+
+  function checkWin() {
+    if (revealedCount === SIZE * SIZE - MINES) win();
+  }
+
+  function win() {
+    running = false; clearInterval(timerId);
+    SGPGame.beep(800, 0.15, 'sine');
+    const seconds = Math.floor((Date.now() - startTime) / 1000);
+    const score = Math.max(50, 1000 - seconds * 6);
+    const coins = Math.round(score / 4), xp = Math.round(score / 3);
+    SGPGame.reportResult('minesweeper', { score, won: true, coinsDelta: coins, xpDelta: xp });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>Board Cleared! 🎉</h2><p class="muted">${seconds}s &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex'; wireStart();
+  }
+
+  function lose() {
+    running = false; clearInterval(timerId);
+    SGPGame.beep(120, 0.3, 'sawtooth');
+    cells.forEach(c => { if (c.mine) c.open = true; });
+    render();
+    SGPGame.reportResult('minesweeper', { won: false, coinsDelta: 5, xpDelta: 5 });
+    overlay.innerHTML = `<h2>💥 Boom!</h2><p class="muted">You hit a mine.</p><button class="btn primary" id="startBtn">Try Again</button>`;
+    overlay.style.display = 'flex'; wireStart();
+  }
+
+  function start() {
+    firstClick = true; running = true; flagsLeft = MINES; revealedCount = 0;
+    clearInterval(timerId); hudTime.textContent = 0;
+    cells = Array.from({ length: SIZE * SIZE }, () => ({ mine: false, open: false, flag: false, n: 0 }));
+    overlay.style.display = 'none';
+    render();
+  }
+
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+})();
+</script>
+</body>
+</html>

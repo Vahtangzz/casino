@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2048 — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .g2048 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 340px; background: var(--bg); padding: 8px; border-radius: 10px; }
+  .tile { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; background: var(--bg-elev-2); transition: background var(--dur-fast); }
+  .tile[data-v="2"]{background:#2a3555} .tile[data-v="4"]{background:#31406b} .tile[data-v="8"]{background:#3a4a8a;color:#fff}
+  .tile[data-v="16"]{background:#4a5ecb;color:#fff} .tile[data-v="32"]{background:#5b6cf0;color:#fff} .tile[data-v="64"]{background:#7a5cf0;color:#fff}
+  .tile[data-v="128"]{background:#a35cf0;color:#fff} .tile[data-v="256"]{background:#d05cd8;color:#fff} .tile[data-v="512"]{background:#f0669c;color:#fff}
+  .tile[data-v="1024"]{background:#f5b942;color:#241900} .tile[data-v="2048"]{background:#ffd75e;color:#241900}
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage">
+      <div class="game-hud"><span>Score: <b id="hudScore">0</b></span><span>Best: <b id="hudBest">0</b></span></div>
+      <div class="stage-wrap">
+        <div class="g2048" id="grid"></div>
+        <div class="overlay-msg" id="overlay">
+          <h2>🧩 2048</h2>
+          <p class="muted">Slide tiles with arrow keys. Merge matching numbers to reach 2048.</p>
+          <button class="btn primary" id="startBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-controls-hint">Arrow keys / WASD to slide. Swipe on mobile.</div>
+    </div>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: '2048', title: '2048', icon: '🧩' });
+
+(() => {
+  const gridEl = document.getElementById('grid'), overlay = document.getElementById('overlay');
+  const hudScore = document.getElementById('hudScore'), hudBest = document.getElementById('hudBest');
+  const best = () => (SGPGame.activeAccount().highScores && SGPGame.activeAccount().highScores['2048']) || 0;
+  hudBest.textContent = best();
+
+  let board, score, running = false;
+
+  function emptyBoard() { return Array.from({ length: 4 }, () => [0, 0, 0, 0]); }
+
+  function addRandom() {
+    const empties = [];
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (board[r][c] === 0) empties.push([r, c]);
+    if (!empties.length) return;
+    const [r, c] = empties[Math.floor(Math.random() * empties.length)];
+    board[r][c] = Math.random() < 0.9 ? 2 : 4;
+  }
+
+  function render() {
+    gridEl.innerHTML = '';
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+      const v = board[r][c];
+      const t = document.createElement('div');
+      t.className = 'tile';
+      if (v) { t.dataset.v = v; t.textContent = v; }
+      gridEl.appendChild(t);
+    }
+    hudScore.textContent = score;
+  }
+
+  function slideLine(line) {
+    let arr = line.filter(v => v !== 0);
+    let gained = 0;
+    for (let i = 0; i < arr.length - 1; i++) {
+      if (arr[i] === arr[i + 1]) { arr[i] *= 2; gained += arr[i]; arr.splice(i + 1, 1); }
+    }
+    while (arr.length < 4) arr.push(0);
+    return { arr, gained };
+  }
+
+  function move(dir) {
+    if (!running) return;
+    let moved = false, gainedTotal = 0;
+    const rotate = () => { board = board[0].map((_, c) => board.map(row => row[c])); };
+    let rotations = { left: 0, right: 2, up: 3, down: 1 }[dir];
+    for (let i = 0; i < rotations; i++) rotate();
+
+    board = board.map(row => {
+      const before = row.join(',');
+      const { arr, gained } = slideLine(dir === 'right' || dir === 'down' ? [...row].reverse() : row);
+      const finalArr = dir === 'right' || dir === 'down' ? arr.reverse() : arr;
+      gainedTotal += gained;
+      if (finalArr.join(',') !== before) moved = true;
+      return finalArr;
+    });
+
+    for (let i = 0; i < (4 - rotations) % 4; i++) rotate();
+
+    if (moved) {
+      score += gainedTotal;
+      if (gainedTotal) SGPGame.beep(600, 0.04, 'sine');
+      addRandom();
+      render();
+      checkEnd();
+    }
+  }
+
+  function maxTile() { return Math.max(...board.flat()); }
+
+  function canMoveAnywhere() {
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+      if (board[r][c] === 0) return true;
+      if (c < 3 && board[r][c] === board[r][c + 1]) return true;
+      if (r < 3 && board[r][c] === board[r + 1][c]) return true;
+    }
+    return false;
+  }
+
+  function checkEnd() {
+    if (!canMoveAnywhere()) gameOver();
+  }
+
+  function gameOver() {
+    running = false;
+    const tile = maxTile();
+    const coins = Math.round(score / 8), xp = Math.round(score / 6);
+    SGPGame.reportResult('2048', { score, coinsDelta: coins, xpDelta: xp, extraStats: { maxTile: tile } });
+    hudBest.textContent = best();
+    overlay.innerHTML = `<h2>No More Moves</h2><p class="muted">Score: ${score} &middot; Best tile: ${tile} &middot; +${coins} coins</p><button class="btn primary" id="startBtn">Play Again</button>`;
+    overlay.style.display = 'flex';
+    wireStart();
+  }
+
+  function start() {
+    board = emptyBoard(); score = 0; running = true;
+    addRandom(); addRandom();
+    overlay.style.display = 'none';
+    render();
+  }
+
+  function wireStart() { document.getElementById('startBtn').addEventListener('click', start); }
+  wireStart();
+
+  document.addEventListener('keydown', e => {
+    const map = { arrowleft: 'left', arrowright: 'right', arrowup: 'up', arrowdown: 'down', a: 'left', d: 'right', w: 'up', s: 'down' };
+    const dir = map[e.key.toLowerCase()];
+    if (dir) { e.preventDefault(); move(dir); }
+  });
+
+  let touchStart = null;
+  gridEl.addEventListener('touchstart', e => { touchStart = e.touches[0]; }, { passive: true });
+  gridEl.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.clientX;
+    const dy = e.changedTouches[0].clientY - touchStart.clientY;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+    else move(dy > 0 ? 'down' : 'up');
+    touchStart = null;
+  });
+})();
+</script>
+</body>
+</html>

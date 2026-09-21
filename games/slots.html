@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slots — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .slot-reels { display: flex; gap: 8px; background: #1a1220; border-radius: 12px; padding: 14px; }
+  .reel { width: 76px; height: 76px; background: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .reel.spinning { animation: reelSpin 0.12s linear infinite; }
+  @keyframes reelSpin { from { transform: translateY(0); } to { transform: translateY(6px); } }
+  .paytable { font-size: 11px; color: #cfd6ea; text-align: center; }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage felt" style="width:100%">
+      <div class="game-hud" style="color:#fff">🪙 Balance: <b id="hudCoins">0</b></div>
+      <div class="slot-reels" id="reels"><div class="reel">🍒</div><div class="reel">🍋</div><div class="reel">🔔</div></div>
+      <div class="paytable">🍒🍒🍒 = 5x &nbsp; 🍋🍋🍋 = 8x &nbsp; 🔔🔔🔔 = 15x &nbsp; ⭐⭐⭐ = 30x &nbsp; 💎💎💎 = 50x &nbsp; any two 💎 = 2x</div>
+      <div class="chip-row" id="chips"></div>
+      <b style="color:#fff" id="betAmount">Bet: 25</b>
+      <button class="btn primary" id="spinBtn">Spin</button>
+      <div id="resultMsg" style="min-height:24px;font-weight:800;color:#fff"></div>
+    </div>
+    <p class="game-controls-hint">Virtual coins only — no real money.</p>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'slots', title: 'Slots', icon: '🎰' });
+
+(() => {
+  const SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '💎'];
+  const WEIGHTS = [40, 28, 16, 10, 6]; // rarer symbols pay more
+  const PAYOUT = { '🍒': 5, '🍋': 8, '🔔': 15, '⭐': 30, '💎': 50 };
+
+  const hudCoins = document.getElementById('hudCoins'), reelsEl = document.getElementById('reels');
+  const betAmountEl = document.getElementById('betAmount'), spinBtn = document.getElementById('spinBtn'), resultMsg = document.getElementById('resultMsg');
+  let bet = 25, spinning = false;
+
+  function refreshCoins() { hudCoins.textContent = SGPUI.fmt(SGPGame.activeAccount().coins); }
+  refreshCoins();
+
+  document.getElementById('chips').innerHTML = [10, 25, 50, 100, 250].map(v => `<button class="chip-btn" data-v="${v}" style="background:#3a5a8a">${v}</button>`).join('');
+  document.querySelectorAll('.chip-btn').forEach(b => b.addEventListener('click', () => {
+    bet = +b.dataset.v; betAmountEl.textContent = 'Bet: ' + bet;
+  }));
+
+  function weightedSymbol() {
+    const total = WEIGHTS.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < SYMBOLS.length; i++) { r -= WEIGHTS[i]; if (r <= 0) return SYMBOLS[i]; }
+    return SYMBOLS[0];
+  }
+
+  function spin() {
+    if (spinning) return;
+    const acc = SGPGame.activeAccount();
+    if (acc.coins < bet) { SGPUI.toast('Not enough coins'); return; }
+    spinning = true; spinBtn.disabled = true;
+    SGPGame.adjustCoins(-bet); refreshCoins();
+    resultMsg.textContent = '';
+    const reelEls = [...reelsEl.children];
+    reelEls.forEach(r => r.classList.add('spinning'));
+    SGPGame.beep(400, 0.6, 'square', 0.03);
+
+    const result = [weightedSymbol(), weightedSymbol(), weightedSymbol()];
+    setTimeout(() => {
+      reelEls.forEach((r, i) => { r.classList.remove('spinning'); r.textContent = result[i]; });
+      let coinsDelta = 0, won = false;
+      if (result[0] === result[1] && result[1] === result[2]) {
+        coinsDelta = bet * PAYOUT[result[0]];
+        won = true;
+      } else if (result.filter(s => s === '💎').length === 2) {
+        coinsDelta = bet * 2; won = true;
+      }
+      if (coinsDelta > 0) { SGPGame.adjustCoins(coinsDelta); SGPGame.beep(820, 0.25, 'sine'); }
+      else SGPGame.beep(130, 0.2, 'sawtooth');
+      resultMsg.textContent = won ? `🎉 You won ${SGPUI.fmt(coinsDelta)} coins!` : 'No match — spin again!';
+      SGPGame.reportResult('slots', { won, coinsDelta: 0, xpDelta: won ? 10 : 2 });
+      refreshCoins();
+      spinning = false; spinBtn.disabled = false;
+    }, 700);
+  }
+  spinBtn.addEventListener('click', spin);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>School Games Portal — Play Free Browser Games</title>
+<meta name="description" content="A lightweight browser game portal: 16 free games playable instantly, with local accounts, XP, coins and achievements. No installs, no server needed.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="app-header"></div>
+
+<main id="main">
+  <div class="container">
+    <section class="hero">
+      <h1>Play instantly. No installs, no sign-up required.</h1>
+      <p class="muted">16 lightweight games that run entirely in your browser. Create a free local account to track XP, coins, achievements and high scores.</p>
+    </section>
+
+    <div class="filter-bar">
+      <div class="search-wrap"><input type="search" id="searchInput" placeholder="Search games..."></div>
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="favorites">❤️ Favorites</button>
+      <button class="chip" data-filter="under1">Under 1 min</button>
+      <button class="chip" data-filter="under5">Under 5 min</button>
+      <button class="chip" data-filter="endless">Endless</button>
+      <button class="chip" data-filter="multiplayer">Multiplayer / Local</button>
+      <button class="chip" data-filter="highscore">High Score</button>
+    </div>
+
+    <div class="section-title"><h2 id="gridTitle">All Games</h2><span class="faint" id="gridCount"></span></div>
+    <div class="game-grid" id="gameGrid"></div>
+    <p class="empty-msg" id="emptyMsg" style="display:none">No games match that filter yet — try another one.</p>
+  </div>
+</main>
+
+<footer>
+  <p>School Games Portal — a static, browser-only game site. Accounts are stored locally on your device (see your <a href="profile.html">profile</a> for export/import). No downloads. No plugins.</p>
+</footer>
+
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/achievements.js"></script>
+<script src="js/games-data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

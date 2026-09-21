@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roulette — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .rl-wheel { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 34px; font-weight: 800; border: 6px solid #3a2313; background: var(--bg-elev-2); transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
+  .rl-history { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: 340px; }
+  .rl-history span { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; }
+  .betrow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage felt" style="width:100%">
+      <div class="game-hud" style="color:#fff">🪙 Balance: <b id="hudCoins">0</b></div>
+      <div class="rl-wheel" id="wheel">?</div>
+      <div class="rl-history" id="history"></div>
+      <div class="chip-row" id="chips"></div>
+      <b style="color:#fff" id="betAmount">Bet: 0</b>
+      <div class="betrow">
+        <button class="btn" id="betRed" style="background:#c0304a;border-color:transparent">Red (2x)</button>
+        <button class="btn" id="betBlack" style="background:#222;border-color:transparent">Black (2x)</button>
+      </div>
+      <div class="betrow">
+        <input type="text" id="numInput" inputmode="numeric" placeholder="0-36" style="width:90px">
+        <button class="btn gold" id="betNumber">Bet Number (36x)</button>
+      </div>
+      <button class="btn ghost" id="clearBet">Clear Bet</button>
+      <button class="btn primary" id="spinBtn" disabled>Spin</button>
+      <div id="resultMsg" style="min-height:24px;font-weight:800;color:#fff"></div>
+    </div>
+    <p class="game-controls-hint">Virtual coins only — no real money.</p>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'roulette', title: 'Roulette', icon: '🎡' });
+
+(() => {
+  const RED_NUMS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+  function colorOf(n) { if (n === 0) return 'green'; return RED_NUMS.has(n) ? 'red' : 'black'; }
+  const colorHex = { red: '#c0304a', black: '#222', green: '#1e8a4a' };
+
+  const hudCoins = document.getElementById('hudCoins'), wheel = document.getElementById('wheel');
+  const historyEl = document.getElementById('history'), betAmountEl = document.getElementById('betAmount');
+  const spinBtn = document.getElementById('spinBtn'), resultMsg = document.getElementById('resultMsg');
+  const numInput = document.getElementById('numInput');
+  let bet = 0, betType = null, betNumber = null, spinning = false, spins = 0;
+
+  function refreshCoins() { hudCoins.textContent = SGPUI.fmt(SGPGame.activeAccount().coins); }
+  refreshCoins();
+
+  document.getElementById('chips').innerHTML = [10, 25, 50, 100, 500].map(v => `<button class="chip-btn" data-v="${v}" style="background:#3a5a8a">${v}</button>`).join('');
+  document.querySelectorAll('.chip-btn').forEach(b => b.addEventListener('click', () => {
+    const v = +b.dataset.v;
+    if (SGPGame.activeAccount().coins < bet + v) { SGPUI.toast('Not enough coins'); return; }
+    bet += v; betAmountEl.textContent = 'Bet: ' + bet;
+    updateSpinEnabled();
+  }));
+
+  function setBetType(type) {
+    betType = type; betNumber = null; numInput.value = '';
+    updateSpinEnabled();
+    SGPUI.toast('Bet set: ' + type.toUpperCase());
+  }
+  document.getElementById('betRed').addEventListener('click', () => setBetType('red'));
+  document.getElementById('betBlack').addEventListener('click', () => setBetType('black'));
+  document.getElementById('betNumber').addEventListener('click', () => {
+    const n = parseInt(numInput.value, 10);
+    if (isNaN(n) || n < 0 || n > 36) { SGPUI.toast('Enter a number 0-36'); return; }
+    betType = 'number'; betNumber = n;
+    updateSpinEnabled();
+    SGPUI.toast('Bet set: number ' + n);
+  });
+  document.getElementById('clearBet').addEventListener('click', () => {
+    bet = 0; betType = null; betNumber = null; numInput.value = '';
+    betAmountEl.textContent = 'Bet: 0'; updateSpinEnabled();
+  });
+  function updateSpinEnabled() { spinBtn.disabled = !(bet > 0 && betType && !spinning); }
+
+  function spin() {
+    if (spinning || !(bet > 0 && betType)) return;
+    spinning = true; spinBtn.disabled = true;
+    SGPGame.adjustCoins(-bet);
+    refreshCoins();
+    resultMsg.textContent = '';
+    const result = Math.floor(Math.random() * 37);
+    const spins360 = 1080 + result * (360 / 37);
+    wheel.style.transform = `rotate(${spins360}deg)`;
+    SGPGame.beep(300, 0.5, 'sawtooth', 0.03);
+    setTimeout(() => {
+      wheel.textContent = result;
+      wheel.style.background = colorHex[colorOf(result)];
+      const win = betType === 'number' ? betNumber === result : betType === colorOf(result);
+      let coinsDelta = 0;
+      if (win) coinsDelta = betType === 'number' ? bet * 36 : bet * 2;
+      if (coinsDelta > 0) SGPGame.adjustCoins(coinsDelta);
+      resultMsg.textContent = win ? `🎉 ${result} (${colorOf(result)})! You won ${SGPUI.fmt(coinsDelta)} coins` : `${result} (${colorOf(result)}) — no win this time`;
+      SGPGame.beep(win ? 780 : 130, win ? 0.2 : 0.2, win ? 'sine' : 'sawtooth');
+      SGPGame.reportResult('roulette', { won: win, coinsDelta: 0, xpDelta: win ? 12 : 3 });
+      refreshCoins();
+
+      const dot = document.createElement('span');
+      dot.style.background = colorHex[colorOf(result)];
+      dot.textContent = result;
+      historyEl.prepend(dot);
+      spins++; if (historyEl.children.length > 14) historyEl.lastChild.remove();
+
+      bet = 0; betType = null; betNumber = null; numInput.value = '';
+      betAmountEl.textContent = 'Bet: 0';
+      spinning = false;
+      updateSpinEnabled();
+    }, 1250);
+  }
+  spinBtn.addEventListener('click', spin);
+})();
+</script>
+</body>
+</html>

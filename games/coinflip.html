@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coin Flip — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .cf-coin { width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe28a, #f5b942 60%, #b3781c);
+    display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; color: #6b4a12;
+    transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+  .cf-coin.flip { transform: rotateY(1440deg); }
+  .streak { color: #fff; font-weight: 700; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage felt" style="width:100%">
+      <div class="game-hud" style="color:#fff">🪙 Balance: <b id="hudCoins">0</b></div>
+      <div class="cf-coin" id="coin">🪙</div>
+      <div class="streak">Current streak: <span id="streak">0</span></div>
+      <div class="chip-row" id="chips"></div>
+      <b style="color:#fff" id="betAmount">Bet: 25</b>
+      <div class="betrow" style="display:flex;gap:8px">
+        <button class="btn primary" id="pickHeads">Call Heads</button>
+        <button class="btn gold" id="pickTails">Call Tails</button>
+      </div>
+      <div id="resultMsg" style="min-height:24px;font-weight:800;color:#fff"></div>
+    </div>
+    <p class="game-controls-hint">Virtual coins only — no real money. Win doubles your bet.</p>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'coinflip', title: 'Coin Flip', icon: '🪙' });
+
+(() => {
+  const hudCoins = document.getElementById('hudCoins'), coin = document.getElementById('coin');
+  const betAmountEl = document.getElementById('betAmount'), resultMsg = document.getElementById('resultMsg'), streakEl = document.getElementById('streak');
+  let bet = 25, flipping = false, streak = 0;
+
+  function refreshCoins() { hudCoins.textContent = SGPUI.fmt(SGPGame.activeAccount().coins); }
+  refreshCoins();
+
+  document.getElementById('chips').innerHTML = [10, 25, 50, 100, 250].map(v => `<button class="chip-btn" data-v="${v}" style="background:#3a5a8a">${v}</button>`).join('');
+  document.querySelectorAll('.chip-btn').forEach(b => b.addEventListener('click', () => {
+    bet = +b.dataset.v; betAmountEl.textContent = 'Bet: ' + bet;
+  }));
+
+  function flip(call) {
+    if (flipping) return;
+    const acc = SGPGame.activeAccount();
+    if (acc.coins < bet) { SGPUI.toast('Not enough coins'); return; }
+    flipping = true;
+    SGPGame.adjustCoins(-bet); refreshCoins();
+    resultMsg.textContent = '';
+    coin.classList.remove('flip'); void coin.offsetWidth; coin.classList.add('flip');
+    SGPGame.beep(350, 0.4, 'square', 0.03);
+    const result = Math.random() < 0.5 ? 'heads' : 'tails';
+    setTimeout(() => {
+      coin.textContent = result === 'heads' ? '👑' : '🪙';
+      const won = call === result;
+      const coinsDelta = won ? bet * 2 : 0;
+      if (won) { SGPGame.adjustCoins(coinsDelta); SGPGame.beep(820, 0.2, 'sine'); streak++; }
+      else { SGPGame.beep(130, 0.2, 'sawtooth'); streak = 0; }
+      streakEl.textContent = streak;
+      resultMsg.textContent = won ? `🎉 ${result.toUpperCase()}! You won ${SGPUI.fmt(coinsDelta)} coins` : `${result.toUpperCase()} — you lost this flip`;
+      SGPGame.reportResult('coinflip', { won, coinsDelta: 0, xpDelta: won ? 8 : 2, extraStats: { streak } });
+      refreshCoins();
+      flipping = false;
+    }, 850);
+  }
+
+  document.getElementById('pickHeads').addEventListener('click', () => flip('heads'));
+  document.getElementById('pickTails').addEventListener('click', () => flip('tails'));
+})();
+</script>
+</body>
+</html>

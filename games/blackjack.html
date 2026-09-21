@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blackjack — School Games Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .bj-hand { display: flex; gap: 6px; min-height: 70px; flex-wrap: wrap; justify-content: center; }
+  .bj-card { width: 46px; height: 64px; background: #fff; color: #111; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,.4); }
+  .bj-card.red { color: #c0304a; }
+  .bj-card.back { background: repeating-linear-gradient(45deg, #3a4a8a, #3a4a8a 4px, #2a3a6a 4px, #2a3a6a 8px); }
+  .bj-label { text-align: center; font-weight: 700; font-size: 12.5px; color: var(--text-dim); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+<main>
+  <div class="container game-shell">
+    <div id="gameTopbar"></div>
+    <div class="game-stage felt" style="width:100%">
+      <div class="game-hud" style="color:#fff"><span>🪙 Balance: <b id="hudCoins">0</b></span><span>Wins: <b id="hudWins">0</b></span></div>
+      <div style="width:100%;max-width:420px">
+        <div class="bj-label">Dealer <span id="dealerTotal"></span></div>
+        <div class="bj-hand" id="dealerHand"></div>
+        <div class="bj-label" style="margin-top:14px">You <span id="playerTotal"></span></div>
+        <div class="bj-hand" id="playerHand"></div>
+      </div>
+      <div id="betArea" class="chip-row"></div>
+      <div id="betControls" style="display:flex;gap:8px;align-items:center">
+        <b id="betAmount" style="color:#fff">Bet: 0</b>
+        <button class="btn" id="clearBet">Clear</button>
+        <button class="btn primary" id="dealBtn" disabled>Deal</button>
+      </div>
+      <div id="actionControls" style="display:none;gap:8px">
+        <button class="btn primary" id="hitBtn">Hit</button>
+        <button class="btn gold" id="standBtn">Stand</button>
+      </div>
+      <div id="resultMsg" style="min-height:24px;font-weight:800;color:#fff"></div>
+    </div>
+    <p class="game-controls-hint">Virtual coins only — no real money. Dealer stands on 17. Get closer to 21 without going over.</p>
+  </div>
+</main>
+<div id="toast-root"></div>
+<script src="../js/storage.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/achievements.js"></script>
+<script src="../js/games-data.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/game-api.js"></script>
+<script>
+SGPUI.renderHeader('');
+SGPGame.renderTopbar({ id: 'blackjack', title: 'Blackjack', icon: '🃏' });
+
+(() => {
+  const dealerHandEl = document.getElementById('dealerHand'), playerHandEl = document.getElementById('playerHand');
+  const dealerTotalEl = document.getElementById('dealerTotal'), playerTotalEl = document.getElementById('playerTotal');
+  const hudCoins = document.getElementById('hudCoins'), hudWins = document.getElementById('hudWins');
+  const betAmountEl = document.getElementById('betAmount'), dealBtn = document.getElementById('dealBtn');
+  const actionControls = document.getElementById('actionControls'), betControls = document.getElementById('betControls');
+  const resultMsg = document.getElementById('resultMsg');
+  const SUITS = ['♠', '♥', '♦', '♣'];
+  const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+  let deck, playerHand, dealerHand, bet = 0, phase = 'bet';
+
+  function refreshCoins() { hudCoins.textContent = SGPUI.fmt(SGPGame.activeAccount().coins); }
+  function refreshWins() { const s = SGPGame.activeAccount().stats; hudWins.textContent = (s.blackjack && s.blackjack.wins) || 0; }
+  refreshCoins(); refreshWins();
+
+  document.getElementById('betArea').innerHTML = [10, 25, 50, 100, 500].map(v => `<button class="chip-btn" data-v="${v}" style="background:${chipColor(v)}">${v}</button>`).join('');
+  function chipColor(v) { return { 10: '#3a5a8a', 25: '#3a8a5a', 50: '#8a3a5a', 100: '#8a5a3a', 500: '#5a3a8a' }[v]; }
+  document.querySelectorAll('.chip-btn').forEach(b => b.addEventListener('click', () => {
+    const v = +b.dataset.v;
+    if (SGPGame.activeAccount().coins < bet + v) { SGPUI.toast('Not enough coins'); return; }
+    bet += v; betAmountEl.textContent = 'Bet: ' + bet;
+    dealBtn.disabled = bet <= 0;
+  }));
+  document.getElementById('clearBet').addEventListener('click', () => { bet = 0; betAmountEl.textContent = 'Bet: 0'; dealBtn.disabled = true; });
+
+  function freshDeck() {
+    const d = [];
+    SUITS.forEach(s => RANKS.forEach(r => d.push({ r, s })));
+    for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; }
+    return d;
+  }
+  function cardValue(card) { if (card.r === 'A') return 11; if (['J','Q','K'].includes(card.r)) return 10; return +card.r; }
+  function handTotal(hand) {
+    let total = hand.reduce((s, c) => s + cardValue(c), 0);
+    let aces = hand.filter(c => c.r === 'A').length;
+    while (total > 21 && aces > 0) { total -= 10; aces--; }
+    return total;
+  }
+  function cardHtml(card, hidden) {
+    if (hidden) return `<div class="bj-card back"></div>`;
+    const red = card.s === '♥' || card.s === '♦';
+    return `<div class="bj-card ${red ? 'red' : ''}">${card.r}${card.s}</div>`;
+  }
+
+  function renderHands(revealDealer) {
+    playerHandEl.innerHTML = playerHand.map(c => cardHtml(c)).join('');
+    dealerHandEl.innerHTML = dealerHand.map((c, i) => cardHtml(c, i === 1 && !revealDealer)).join('');
+    playerTotalEl.textContent = '(' + handTotal(playerHand) + ')';
+    dealerTotalEl.textContent = revealDealer ? '(' + handTotal(dealerHand) + ')' : '';
+  }
+
+  function deal() {
+    if (bet <= 0) return;
+    SGPGame.adjustCoins(-bet);
+    refreshCoins();
+    deck = freshDeck();
+    playerHand = [deck.pop(), deck.pop()];
+    dealerHand = [deck.pop(), deck.pop()];
+    phase = 'player';
+    resultMsg.textContent = '';
+    betControls.style.display = 'none';
+    actionControls.style.display = 'flex';
+    renderHands(false);
+    if (handTotal(playerHand) === 21) stand();
+  }
+
+  function hit() {
+    if (phase !== 'player') return;
+    playerHand.push(deck.pop());
+    renderHands(false);
+    SGPGame.beep(500, 0.04, 'square');
+    if (handTotal(playerHand) > 21) endRound('bust');
+  }
+
+  function stand() {
+    if (phase !== 'player') return;
+    phase = 'dealer';
+    while (handTotal(dealerHand) < 17) dealerHand.push(deck.pop());
+    const p = handTotal(playerHand), d = handTotal(dealerHand);
+    if (d > 21 || p > d) endRound('win');
+    else if (p === d) endRound('push');
+    else endRound('lose');
+  }
+
+  function endRound(outcome) {
+    renderHands(true);
+    let coinsDelta = 0, won = false, msg = '';
+    const blackjack = playerHand.length === 2 && handTotal(playerHand) === 21;
+    if (outcome === 'bust') { msg = '💥 Bust! You lose.'; coinsDelta = 0; }
+    else if (outcome === 'lose') { msg = 'Dealer wins.'; coinsDelta = 0; }
+    else if (outcome === 'push') { msg = 'Push — bet returned.'; coinsDelta = bet; }
+    else if (outcome === 'win') {
+      won = true;
+      coinsDelta = blackjack ? Math.round(bet * 2.5) : bet * 2;
+      msg = blackjack ? '🃏 Blackjack! You win big!' : '🎉 You win!';
+    }
+    if (coinsDelta > 0) SGPGame.adjustCoins(coinsDelta);
+    resultMsg.textContent = msg;
+    SGPGame.beep(won ? 780 : 130, won ? 0.18 : 0.22, won ? 'sine' : 'sawtooth');
+
+    const prevWins = (SGPGame.activeAccount().stats.blackjack && SGPGame.activeAccount().stats.blackjack.wins) || 0;
+    SGPGame.reportResult('blackjack', { won, coinsDelta: 0, xpDelta: won ? 15 : 5, extraStats: { wins: prevWins + (won ? 1 : 0) } });
+    refreshCoins(); refreshWins();
+
+    phase = 'bet'; bet = 0; betAmountEl.textContent = 'Bet: 0'; dealBtn.disabled = true;
+    actionControls.style.display = 'none';
+    betControls.style.display = 'flex';
+  }
+
+  dealBtn.addEventListener('click', deal);
+  document.getElementById('hitBtn').addEventListener('click', hit);
+  document.getElementById('standBtn').addEventListener('click', stand);
+})();
+</script>
+</body>
+</html>
